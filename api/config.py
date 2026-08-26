@@ -14,6 +14,7 @@ class GenerationSettings(BaseSettings):
     resolution: str = "1024x576"
     seed: int | None = None
     model_cache_dir: str | None = None
+    output_dir: str = "generated"
 
 
 class Environment(BaseSettings):

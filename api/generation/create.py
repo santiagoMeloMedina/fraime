@@ -60,7 +60,7 @@ class GenerationHandler:
         if len(fetched.images) >= 2:
             pipeline_kwargs["last_image"] = fetched.images[1]
 
-        return self.pipeline(**pipeline_kwargs).frames
+        return self.pipeline(**pipeline_kwargs).frames[0]
 
     @staticmethod
     def _fetch_references(references: list[Reference]) -> FetchedReferences:

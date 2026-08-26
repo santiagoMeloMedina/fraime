@@ -10,3 +10,5 @@ uvicorn
 httpx
 Pillow
 tqdm
+imageio
+imageio-ffmpeg
