@@ -1,0 +1,11 @@
+pydantic
+pydantic-settings
+python-dotenv
+diffusers
+torch
+transformers
+accelerate
+fastapi
+uvicorn
+httpx
+Pillow

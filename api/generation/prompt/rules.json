@@ -1,0 +1,402 @@
+{
+  "criteria_schema": {
+    "name": "Unique identifier for the criterion within its scope (shared or a given type).",
+    "description": "What is being checked.",
+    "check_type": "'structural' = deterministically computable from the prompt/params (field presence, length, enum membership, word-count-vs-duration math). 'semantic' = requires judgment (an LLM-as-judge pass) to assess, e.g. tone or physical plausibility.",
+    "severity": "'blocking' = the compiled prompt should not be sent to generation until this passes; reserved for structural checks with an unambiguous failure condition. 'quality' = contributes to an aggregate quality score but does not by itself stop generation.",
+    "weight": "Relative importance (0-1) among the quality-severity criteria in the same scope, used to compute an aggregate quality score. Omitted for blocking criteria, since those gate rather than score.",
+    "remediation": "What the improve step should try when this criterion fails, phrased as an action the PromptHandler.update_* methods can perform."
+  },
+  "shared": {
+    "fields": {
+      "subject": "Describe who/what is the focus in concrete, visually groundable terms; avoid abstract adjectives with no visual referent.",
+      "action": "Describe the motion/behavior happening over the clip; keep it achievable within a short clip rather than a multi-beat sequence.",
+      "scene": "Describe environment, background, and time of day with enough specificity to anchor lighting and mood.",
+      "camera": "Specify shot type and movement; must be physically compatible with the described action.",
+      "lighting": "Specify lighting style/mood; must not contradict the scene's implied lighting conditions.",
+      "style": "Name a concrete visual/style reference (rendering style, film stock, animation technique) rather than a vague quality adjective like 'high quality'.",
+      "negative_prompt": "List concrete failure modes to avoid for this content type, not generic boilerplate."
+    },
+    "evaluation_criteria": [
+      {
+        "name": "specificity",
+        "description": "Every field uses concrete, visually groundable language rather than vague filler adjectives ('beautiful', 'amazing', 'high quality') with no visual referent.",
+        "check_type": "semantic",
+        "severity": "quality",
+        "weight": 0.2,
+        "remediation": "Replace vague adjectives with concrete descriptors specific to the subject/scene (material, color, shape, texture, expression)."
+      },
+      {
+        "name": "camera_action_consistency",
+        "description": "Camera movement is physically compatible with the described action.",
+        "check_type": "semantic",
+        "severity": "quality",
+        "weight": 0.2,
+        "remediation": "Adjust camera to a movement achievable given the described action (e.g. don't pair 'static shot' with 'fast tracking chase')."
+      },
+      {
+        "name": "lighting_scene_consistency",
+        "description": "Lighting description does not contradict the scene's implied time of day/environment.",
+        "check_type": "semantic",
+        "severity": "quality",
+        "weight": 0.15,
+        "remediation": "Align lighting with the scene's implied conditions (e.g. don't pair 'midnight' with 'bright midday sun')."
+      },
+      {
+        "name": "negative_prompt_coverage",
+        "description": "Negative prompt names concrete failure modes relevant to this content type, not generic boilerplate.",
+        "check_type": "semantic",
+        "severity": "quality",
+        "weight": 0.15,
+        "remediation": "Add failure-mode terms specific to this type's ruleset (see per-type negative_prompt guidance) instead of generic terms like 'bad quality, blurry'."
+      },
+      {
+        "name": "duration_feasibility",
+        "description": "The described action is achievable within the requested clip duration without needing multiple narrative beats.",
+        "check_type": "semantic",
+        "severity": "quality",
+        "weight": 0.15,
+        "remediation": "Collapse multi-beat action into a single continuous motion, or reduce the number of described events."
+      },
+      {
+        "name": "field_non_empty",
+        "description": "Every required field (subject, action, scene, camera, lighting, style) is a non-empty string after stripping whitespace.",
+        "check_type": "structural",
+        "severity": "blocking",
+        "remediation": "Populate any empty required field before sending the prompt to generation; this should never reach the evaluator for a validly constructed PromptComponents instance."
+      }
+    ]
+  },
+  "types": {
+    "pixar": {
+      "style_guidance": "Reference 3D animated feature conventions: stylized character proportions, warm rim lighting, expressive readable motion.",
+      "evaluation_criteria": [
+        {
+          "name": "style_named",
+          "description": "Style field names a concrete animation convention/reference, not just 'cartoon' or 'animated'.",
+          "check_type": "semantic",
+          "severity": "quality",
+          "weight": 0.3,
+          "remediation": "Name a specific rendering convention, e.g. '3D animated feature style, stylized proportions, warm rim lighting'."
+        },
+        {
+          "name": "motion_readability",
+          "description": "Action is exaggerated/readable enough for a stylized 3D render rather than dependent on subtle micro-expression.",
+          "check_type": "semantic",
+          "severity": "quality",
+          "weight": 0.2,
+          "remediation": "Amplify the described motion into a clearer, larger physical gesture."
+        }
+      ]
+    },
+    "action": {
+      "style_guidance": "Favor kinetic camera language and impact-driven pacing.",
+      "evaluation_criteria": [
+        {
+          "name": "motion_complexity",
+          "description": "More than one fast-moving interacting subject is described; current models degrade sharply with multi-entity fast motion.",
+          "check_type": "semantic",
+          "severity": "quality",
+          "weight": 0.3,
+          "remediation": "Reduce to a single primary moving subject, or split the shot into separate generations."
+        },
+        {
+          "name": "prop_continuity",
+          "description": "Any weapon/prop/tool mentioned in action has corresponding coverage in negative_prompt against morphing.",
+          "check_type": "structural",
+          "severity": "quality",
+          "weight": 0.2,
+          "remediation": "Add the prop's name plus 'morphing, warping, extra limbs' to negative_prompt."
+        },
+        {
+          "name": "impact_physics",
+          "description": "Impacts/collisions imply a plausible physical consequence (debris, recoil, follow-through) rather than being stated as instantaneous.",
+          "check_type": "semantic",
+          "severity": "quality",
+          "weight": 0.2,
+          "remediation": "Add a physical consequence phrase following the impact (e.g. 'debris scatters', 'staggers backward')."
+        }
+      ]
+    },
+    "animation": {
+      "style_guidance": "Name the specific animation technique (2D cel-shaded, stop-motion, cutout) rather than 'animation' alone.",
+      "evaluation_criteria": [
+        {
+          "name": "technique_named",
+          "description": "Style specifies a concrete animation technique.",
+          "check_type": "semantic",
+          "severity": "quality",
+          "weight": 0.3,
+          "remediation": "Name the specific technique (2D cel-shaded, stop-motion, cutout, paper animation)."
+        },
+        {
+          "name": "motion_readability",
+          "description": "Action is exaggerated/readable enough for the named technique.",
+          "check_type": "semantic",
+          "severity": "quality",
+          "weight": 0.2,
+          "remediation": "Amplify the described motion into a clearer, larger physical gesture appropriate to the technique."
+        }
+      ]
+    },
+    "anime": {
+      "style_guidance": "Reference specific anime visual conventions (cel-shading, speed lines, dramatic zoom) and era/studio influence if relevant.",
+      "evaluation_criteria": [
+        {
+          "name": "technique_named",
+          "description": "Style specifies concrete anime conventions, not just the word 'anime'.",
+          "check_type": "semantic",
+          "severity": "quality",
+          "weight": 0.3,
+          "remediation": "Name specific conventions (cel-shading, speed lines, dramatic zoom, era/studio influence)."
+        },
+        {
+          "name": "expression_intensity",
+          "description": "Character expression/action is stylistically exaggerated in line with anime convention.",
+          "check_type": "semantic",
+          "severity": "quality",
+          "weight": 0.15,
+          "remediation": "Heighten expression or motion intensity to match anime convention."
+        }
+      ]
+    },
+    "documentary": {
+      "style_guidance": "Favor observational, photorealistic camera language; avoid overtly stylized camera moves that break documentary realism.",
+      "evaluation_criteria": [
+        {
+          "name": "camera_realism",
+          "description": "Camera field avoids highly stylized moves (e.g. dramatic dutch angle) that undercut documentary authenticity, unless deliberate.",
+          "check_type": "semantic",
+          "severity": "quality",
+          "weight": 0.25,
+          "remediation": "Replace stylized camera language with observational terms (handheld, static tripod, slow pan)."
+        },
+        {
+          "name": "subject_naturalism",
+          "description": "Subject description avoids overtly staged/posed language inconsistent with observational footage.",
+          "check_type": "semantic",
+          "severity": "quality",
+          "weight": 0.15,
+          "remediation": "Rephrase posed/staged language into candid, in-the-moment description."
+        }
+      ]
+    },
+    "fashion": {
+      "style_guidance": "Specify wardrobe/material detail and editorial lighting convention (studio strobe, natural window light).",
+      "evaluation_criteria": [
+        {
+          "name": "wardrobe_detail",
+          "description": "Subject description includes garment/material detail relevant to the shot's purpose.",
+          "check_type": "semantic",
+          "severity": "quality",
+          "weight": 0.25,
+          "remediation": "Add fabric, silhouette, or color detail about the wardrobe to the subject field."
+        },
+        {
+          "name": "camera_editorial_fit",
+          "description": "Camera work matches editorial/runway convention (slow tracking, low angle) rather than generic framing.",
+          "check_type": "semantic",
+          "severity": "quality",
+          "weight": 0.15,
+          "remediation": "Specify an editorial camera convention (slow-motion tracking, low-angle runway shot)."
+        }
+      ]
+    },
+    "ugc_product_review": {
+      "extra_fields": {
+        "dialogue": "Write as natural spoken speech, not written prose; keep it speakable within the clip duration.",
+        "reference_image": "Set whenever exact product appearance (label, packaging, shape) matters."
+      },
+      "style_guidance": "Favor 'handheld, amateur, phone camera, unpolished' language; avoid cinematic vocabulary that undercuts authenticity.",
+      "evaluation_criteria": [
+        {
+          "name": "authenticity_tone",
+          "description": "Style/camera reads as informal/handheld, not polished/cinematic.",
+          "check_type": "semantic",
+          "severity": "quality",
+          "weight": 0.25,
+          "remediation": "Replace cinematic language in style/camera with informal/handheld equivalents."
+        },
+        {
+          "name": "product_reference_present",
+          "description": "reference_image is set when product visual accuracy matters.",
+          "check_type": "structural",
+          "severity": "quality",
+          "weight": 0.2,
+          "remediation": "Set reference_image to a real product photo."
+        },
+        {
+          "name": "dialogue_duration_fit",
+          "description": "Dialogue word count, at ~2.5 words/second natural speaking pace, fits within params.duration_s.",
+          "check_type": "structural",
+          "severity": "blocking",
+          "remediation": "Trim dialogue to roughly duration_s * 2.5 words, or increase duration_s in GenerationParams."
+        }
+      ]
+    },
+    "commercial_product_ad": {
+      "extra_fields": {
+        "dialogue": "Usually left unset; a voiceover is typically layered separately from the visual generation.",
+        "reference_image": "Set whenever exact product appearance (label, packaging, shape) matters."
+      },
+      "style_guidance": "Favor polished studio language: controlled lighting, smooth camera moves (orbit/dolly), commercial pacing.",
+      "evaluation_criteria": [
+        {
+          "name": "product_reference_present",
+          "description": "reference_image is set when product visual accuracy matters.",
+          "check_type": "structural",
+          "severity": "quality",
+          "weight": 0.3,
+          "remediation": "Set reference_image to a real product photo."
+        },
+        {
+          "name": "polish_tone",
+          "description": "Style/camera reads as polished/commercial, the opposite of the UGC authenticity requirement.",
+          "check_type": "semantic",
+          "severity": "quality",
+          "weight": 0.25,
+          "remediation": "Replace informal/handheld language in style/camera with studio/commercial equivalents."
+        }
+      ]
+    },
+    "explainer_testimonial": {
+      "extra_fields": {
+        "dialogue": "Write as clear, informative, persuasive speech rather than casual chatter.",
+        "reference_image": "Set when a consistent speaker/product identity is required."
+      },
+      "style_guidance": "Favor clear, well-lit, direct-to-camera framing.",
+      "evaluation_criteria": [
+        {
+          "name": "dialogue_duration_fit",
+          "description": "Dialogue word count, at ~2.5 words/second natural speaking pace, fits within params.duration_s.",
+          "check_type": "structural",
+          "severity": "blocking",
+          "remediation": "Trim dialogue to roughly duration_s * 2.5 words, or increase duration_s in GenerationParams."
+        },
+        {
+          "name": "clarity_of_framing",
+          "description": "Camera keeps the subject clearly framed and centered for message clarity.",
+          "check_type": "semantic",
+          "severity": "quality",
+          "weight": 0.2,
+          "remediation": "Set camera to a centered medium shot with minimal movement."
+        }
+      ]
+    },
+    "presenter_avatar": {
+      "extra_fields": {
+        "dialogue": "Write as scripted speech; this is the primary content of the clip.",
+        "reference_image": "Set to anchor a consistent identity across multiple separate generations of the same presenter.",
+        "voice_tone": "Set explicitly (e.g. 'warm, confident, corporate') rather than left unset."
+      },
+      "style_guidance": "Favor static or minimal camera movement and direct-to-camera framing.",
+      "evaluation_criteria": [
+        {
+          "name": "identity_consistency",
+          "description": "reference_image is set whenever the same presenter will appear across multiple generations.",
+          "check_type": "structural",
+          "severity": "quality",
+          "weight": 0.2,
+          "remediation": "Set reference_image to the presenter's identity anchor image."
+        },
+        {
+          "name": "voice_tone_specified",
+          "description": "voice_tone is set and specific rather than left unset.",
+          "check_type": "structural",
+          "severity": "quality",
+          "weight": 0.15,
+          "remediation": "Set voice_tone to a specific descriptor (e.g. 'warm, confident, corporate')."
+        },
+        {
+          "name": "dialogue_duration_fit",
+          "description": "Dialogue word count, at ~2.5 words/second natural speaking pace, fits within params.duration_s.",
+          "check_type": "structural",
+          "severity": "blocking",
+          "remediation": "Trim dialogue to roughly duration_s * 2.5 words, or increase duration_s in GenerationParams."
+        }
+      ]
+    },
+    "social_short_form_ad": {
+      "extra_fields": {
+        "dialogue": "Write as a fast, hook-driven opening line plus short follow-through.",
+        "reference_image": "Set whenever a specific product/identity must appear.",
+        "text_overlay": "Keep short enough to read comfortably within the clip duration.",
+        "aspect_ratio": "Use a valid vertical short-form ratio (e.g. '9:16') unless explicitly overridden."
+      },
+      "style_guidance": "Favor fast pacing, hook-driven opening action, vertical framing.",
+      "evaluation_criteria": [
+        {
+          "name": "caption_length_fit",
+          "description": "text_overlay character count, at ~15 readable chars/second, fits within params.duration_s.",
+          "check_type": "structural",
+          "severity": "blocking",
+          "remediation": "Trim text_overlay to roughly duration_s * 15 characters, or increase duration_s."
+        },
+        {
+          "name": "aspect_ratio_valid",
+          "description": "aspect_ratio is one of the known vertical short-form ratios ('9:16', '4:5').",
+          "check_type": "structural",
+          "severity": "blocking",
+          "remediation": "Set aspect_ratio to '9:16' unless the target platform requires otherwise."
+        },
+        {
+          "name": "dialogue_duration_fit",
+          "description": "Dialogue word count, at ~2.5 words/second natural speaking pace, fits within params.duration_s.",
+          "check_type": "structural",
+          "severity": "blocking",
+          "remediation": "Trim dialogue to roughly duration_s * 2.5 words, or increase duration_s in GenerationParams."
+        }
+      ]
+    },
+    "music_video": {
+      "extra_fields": {
+        "audio_reference": "Must be set; visuals cannot be evaluated for sync without a reference track.",
+        "tempo_bpm": "Set so cuts/transformations can be timed to the beat."
+      },
+      "style_guidance": "Favor rhythm/beat-synced visual language over narrative action language.",
+      "evaluation_criteria": [
+        {
+          "name": "audio_reference_present",
+          "description": "audio_reference is set to a non-empty value.",
+          "check_type": "structural",
+          "severity": "blocking",
+          "remediation": "Set audio_reference to the track this clip must sync to before evaluating further."
+        },
+        {
+          "name": "tempo_specified",
+          "description": "tempo_bpm is set.",
+          "check_type": "structural",
+          "severity": "quality",
+          "weight": 0.3,
+          "remediation": "Set tempo_bpm from the reference track's known BPM."
+        }
+      ],
+      "caveat": "No currently integrated model (Wan/HunyuanVideo/LTX/etc.) natively supports audio-synced generation; this type is defined for future support."
+    },
+    "motion_graphics": {
+      "extra_fields": {
+        "text_content": "Keep short enough to be legible within the clip duration.",
+        "transitions": "Name a concrete transition style (fade, slide, zoom) rather than leaving it generic."
+      },
+      "style_guidance": "Favor abstract/graphic style language (flat design, iconography, kinetic typography) over photoreal/cinematic vocabulary.",
+      "evaluation_criteria": [
+        {
+          "name": "text_length_fit",
+          "description": "text_content character count, at ~15 readable chars/second, fits within params.duration_s.",
+          "check_type": "structural",
+          "severity": "blocking",
+          "remediation": "Trim text_content to roughly duration_s * 15 characters, or increase duration_s."
+        },
+        {
+          "name": "transitions_named",
+          "description": "transitions names a concrete transition style rather than being left unset.",
+          "check_type": "structural",
+          "severity": "quality",
+          "weight": 0.2,
+          "remediation": "Set transitions to a concrete style (fade, slide, zoom, wipe)."
+        }
+      ],
+      "caveat": "This content type is better served by templated motion-graphics tooling than diffusion text-to-video models; none of the currently integrated models target this output style."
+    }
+  }
+}
