@@ -18,7 +18,7 @@ class GenerationSettings(BaseSettings):
 
 
 class Environment(BaseSettings):
-    model_config = SettingsConfigDict(env_file=ENV_FILE)
+    model_config = SettingsConfigDict(env_file=ENV_FILE, extra="ignore")
 
     generation: GenerationSettings = GenerationSettings()
 
