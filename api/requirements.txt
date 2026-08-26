@@ -9,3 +9,4 @@ fastapi
 uvicorn
 httpx
 Pillow
+tqdm

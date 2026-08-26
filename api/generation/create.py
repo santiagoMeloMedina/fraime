@@ -1,25 +1,43 @@
 import io
+from collections.abc import Callable
+from dataclasses import dataclass, field
 
 import httpx
 import torch
 from diffusers import DiffusionPipeline
+from huggingface_hub import snapshot_download
 from PIL import Image
 
-from api.generation.model import GenerationParams
+from api.config import environment
+from api.generation.model import GenerationParams, Reference
 from api.generation.prompt.handler import PromptHandler
+from api.utils.progress import make_progress_reporter
+
+
+@dataclass
+class FetchedReferences:
+    images: list[Image.Image] = field(default_factory=list)
 
 
 class GenerationHandler:
-    def __init__(self, model: str):
+    def __init__(self, model: str, on_progress: Callable[[float], None] | None = None):
         self.model = model
-        self.pipeline = DiffusionPipeline.from_pretrained(model)
+        if on_progress is not None:
+            snapshot_download(
+                repo_id=model,
+                cache_dir=environment.generation.model_cache_dir,
+                tqdm_class=make_progress_reporter(on_progress),
+            )
+        self.pipeline = DiffusionPipeline.from_pretrained(
+            model, cache_dir=environment.generation.model_cache_dir
+        )
 
     def generate(
         self,
         video_type: str,
         fields: dict,
         params: GenerationParams,
-        references: list[str] | None = None,
+        references: list[Reference] | None = None,
     ):
         compiled_prompt = PromptHandler.compile(video_type, fields)
         width, height = (int(value) for value in params.resolution.split("x"))
@@ -37,35 +55,23 @@ class GenerationHandler:
         }
 
         fetched = self._fetch_references(references or [])
-        if fetched["images"]:
-            pipeline_kwargs["reference_images"] = fetched["images"]
-        if fetched["audio"]:
-            pipeline_kwargs["reference_audio"] = fetched["audio"]
-        if fetched["video"]:
-            pipeline_kwargs["reference_videos"] = fetched["video"]
+        if len(fetched.images) >= 1:
+            pipeline_kwargs["image"] = fetched.images[0]
+        if len(fetched.images) >= 2:
+            pipeline_kwargs["last_image"] = fetched.images[1]
 
         return self.pipeline(**pipeline_kwargs).frames
 
     @staticmethod
-    def _fetch_references(urls: list[str]) -> dict[str, list]:
-        references: dict[str, list] = {"images": [], "audio": [], "video": []}
-        for url in urls:
+    def _fetch_references(references: list[Reference]) -> FetchedReferences:
+        fetched = FetchedReferences()
+        for reference in references:
             response = httpx.get(
-                url,
+                str(reference.url),
                 follow_redirects=True,
                 headers={"User-Agent": "fraime/1.0"},
             )
             response.raise_for_status()
-            buffer = io.BytesIO(response.content)
-            content_type = response.headers.get("content-type", "")
+            fetched.images.append(Image.open(io.BytesIO(response.content)))
 
-            if content_type.startswith("image/"):
-                references["images"].append(Image.open(buffer))
-            elif content_type.startswith("audio/"):
-                references["audio"].append(buffer)
-            elif content_type.startswith("video/"):
-                references["video"].append(buffer)
-            else:
-                raise ValueError(f"Unsupported reference content type '{content_type}' for {url}")
-
-        return references
+        return fetched

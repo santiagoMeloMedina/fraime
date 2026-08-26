@@ -13,6 +13,7 @@ class GenerationSettings(BaseSettings):
     fps: int = 24
     resolution: str = "1024x576"
     seed: int | None = None
+    model_cache_dir: str | None = None
 
 
 class Environment(BaseSettings):

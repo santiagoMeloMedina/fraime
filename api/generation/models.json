@@ -1,10 +1,10 @@
 {
-  "note": "Curated catalog of open source (open-weight) video generation models, verified via web search Aug 2026. Model ids are Hugging Face repo ids intended for DiffusionPipeline.from_pretrained. VRAM figures are sourced from model cards/community benchmarks and vary with resolution/frame count/offloading; treat as approximate. Excluded: ByteDance Waver 1.0 — ranks top-3 on public leaderboards but is confirmed NOT open-weight (code/paper public, trained weights proprietary), so it doesn't belong in this catalog.",
+  "note": "Curated catalog of open source video generation models, restricted to unconditionally free licenses only (Apache-2.0/MIT, no custom \"community license\", no MAU/revenue thresholds, no academic-only caveats). Verified via web search Aug 2026. Model ids are Hugging Face repo ids intended for DiffusionPipeline.from_pretrained. VRAM figures are sourced from model cards/community benchmarks and vary with resolution/frame count/offloading; treat as approximate. Deliberately excluded despite being otherwise capable: ByteDance Waver 1.0 (not open-weight at all), MiniMax-H3 (license bars local deployment in the US/EU/UK/South Korea), AnimateDiff (README says \"academic use\" despite an Apache-2.0 tag), LTX-Video/LTX-2.5 (LTX Community License: free only under $10M revenue, bars training competing AI systems, bars competing products), CogVideoX-5B (CogVideoX License: requires commercial registration, capped at 1M visits/month), HunyuanVideo-1.5 (Tencent Community License: free only under 100M MAU).",
   "hardware_tiers": {
     "minimal": {
       "vram_gb_min": 4,
       "vram_gb_max": 8,
-      "description": "Entry-level/laptop GPU. Native video DiT models are not viable here; only SD-based motion-module approaches (AnimateDiff) work."
+      "description": "Entry-level/laptop GPU. No model in this catalog fits below 8GB now that AnimateDiff (academic-use license) is excluded."
     },
     "low": {
       "vram_gb_min": 8,
@@ -23,16 +23,6 @@
     }
   },
   "models": {
-    "animatediff": {
-      "id": "guoyww/animatediff-motion-adapter-v1-5-3",
-      "org": "guoyww (independent research)",
-      "params": "~1.7B (SD1.5 + motion adapter)",
-      "license": "Apache-2.0 (repo tag); project README states \"released for academic use\" — verify before commercial use",
-      "hardware_tier": "minimal",
-      "min_vram_gb": 6,
-      "capabilities": ["text-to-video", "image-to-video"],
-      "notes": "Not a native video model — a motion module applied on top of SD1.5. 16 frames, 512x512 native. The only viable option below 8GB VRAM; noticeably behind DiT-based models on coherence and resolution."
-    },
     "magi_1_distilled": {
       "id": "sand-ai/MAGI-1",
       "variant": "4.5B-distill+fp8_quant",
@@ -58,21 +48,11 @@
       "id": "zai-org/CogVideoX-2b",
       "org": "Zhipu AI (formerly THUDM)",
       "params": "2B",
-      "license": "CogVideoX License (custom, see model card)",
+      "license": "Apache-2.0",
       "hardware_tier": "low",
       "min_vram_gb": 8,
       "capabilities": ["text-to-video"],
-      "notes": "Smaller sibling of CogVideoX-5B. Trained in FP16; quantizable further with PytorchAO/Optimum-quanto down to free-tier-Colab-class GPUs."
-    },
-    "ltx_video": {
-      "id": "Lightricks/LTX-Video",
-      "org": "Lightricks",
-      "params": "2B (13B variant also available)",
-      "license": "Custom (see model card, tagged \"other\")",
-      "hardware_tier": "low",
-      "min_vram_gb": 12,
-      "capabilities": ["text-to-video", "image-to-video"],
-      "notes": "Optimized for speed; near-real-time generation. Community reports usable down to 6GB with quantization/offloading and reduced resolution, but 12GB is the realistic floor for normal use."
+      "notes": "Smaller sibling of CogVideoX-5B — note the 5B is under the restrictive custom CogVideoX License, but the 2B was relicensed to Apache-2.0. Trained in FP16; quantizable further with PytorchAO/Optimum-quanto down to free-tier-Colab-class GPUs."
     },
     "wan2.2_ti2v_5b": {
       "id": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
@@ -83,27 +63,7 @@
       "min_vram_gb": 24,
       "min_vram_gb_quantized": 16,
       "capabilities": ["text-to-video", "image-to-video"],
-      "notes": "Unified T2V+I2V in one checkpoint. ~27.4GB at FP16 for 25 frames @ 768x512; FP8 cuts ~40%. Very fast — a 5s 720p clip in under 9 minutes on a single consumer GPU."
-    },
-    "cogvideox_5b": {
-      "id": "zai-org/CogVideoX-5b",
-      "org": "Zhipu AI (formerly THUDM)",
-      "params": "5B",
-      "license": "CogVideoX License (custom, see model card)",
-      "hardware_tier": "mid",
-      "min_vram_gb": 16,
-      "capabilities": ["text-to-video", "image-to-video"],
-      "notes": "Well documented, mature diffusers support, good quality/resource balance. Trained in BF16."
-    },
-    "hunyuanvideo_1_5": {
-      "id": "tencent/HunyuanVideo-1.5",
-      "org": "Tencent",
-      "params": "8.3B",
-      "license": "Tencent Hunyuan Community License",
-      "hardware_tier": "mid",
-      "min_vram_gb": 16,
-      "capabilities": ["text-to-video", "image-to-video"],
-      "notes": "Top-tier quality at a deliberately lowered parameter count; tuned to run on consumer-grade GPUs. Up to 15s clips at 24fps, 720p."
+      "notes": "Unified T2V+I2V in one checkpoint. ~27.4GB at FP16 for 25 frames @ 768x512; FP8 cuts ~40%. Very fast — a 5s 720p clip in under 9 minutes on a single consumer GPU. Currently the only mid-tier model in this catalog."
     },
     "wan2.2_a14b": {
       "id": "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
@@ -146,73 +106,56 @@
       "min_vram_gb": null,
       "capabilities": ["text-to-video", "image-to-video"],
       "notes": "Full, non-distilled version. Exact VRAM floor not confirmed via search; scaling from the 4.5B variant's ~24GB at standard precision implies an 80GB+ class requirement. Same autoregressive chunk-based architecture as magi_1_distilled, at full quality."
-    },
-    "ltx_2_5": {
-      "id": "Lightricks/LTX-2.5",
-      "org": "Lightricks",
-      "params": "22B",
-      "license": "Custom (see model card, tagged \"other\")",
-      "hardware_tier": "high",
-      "min_vram_gb": 66,
-      "min_vram_gb_quantized": 30,
-      "capabilities": ["text-to-video", "image-to-video", "native-audio"],
-      "notes": "Only open model with native audio+video generation in a single pass (dual-stream DiT with cross-modal attention). ~66GB at full precision; FP8 quantization brings it to ~30-35GB (48GB cards viable); community FP8+CPU-offload builds report running on 16-24GB cards at a further speed cost."
     }
   },
   "video_type_mapping": {
-    "pixar": { "minimal": "animatediff", "low": "wan2.1_1.3b", "mid": "wan2.2_ti2v_5b", "high": "wan2.2_a14b" },
-    "action": {
-      "minimal": null,
-      "low": "magi_1_distilled",
-      "mid": "hunyuanvideo_1_5",
-      "high": "mochi_1",
-      "note": "minimal tier is not viable — action's fast/complex motion is exactly what AnimateDiff's SD1.5 motion module handles worst."
-    },
-    "animation": { "minimal": "animatediff", "low": "wan2.1_1.3b", "mid": "wan2.2_ti2v_5b", "high": "wan2.2_a14b" },
-    "anime": { "minimal": "animatediff", "low": "ltx_video", "mid": "cogvideox_5b", "high": "wan2.2_a14b" },
-    "documentary": { "minimal": null, "low": "wan2.1_1.3b", "mid": "hunyuanvideo_1_5", "high": "wan2.2_a14b" },
-    "fashion": { "minimal": null, "low": "wan2.1_1.3b", "mid": "hunyuanvideo_1_5", "high": "skyreels_v1" },
+    "pixar": { "minimal": null, "low": "wan2.1_1.3b", "mid": "wan2.2_ti2v_5b", "high": "wan2.2_a14b" },
+    "action": { "minimal": null, "low": "magi_1_distilled", "mid": "wan2.2_ti2v_5b", "high": "mochi_1" },
+    "animation": { "minimal": null, "low": "wan2.1_1.3b", "mid": "wan2.2_ti2v_5b", "high": "wan2.2_a14b" },
+    "anime": { "minimal": null, "low": "wan2.1_1.3b", "mid": "wan2.2_ti2v_5b", "high": "wan2.2_a14b" },
+    "documentary": { "minimal": null, "low": "wan2.1_1.3b", "mid": "wan2.2_ti2v_5b", "high": "wan2.2_a14b" },
+    "fashion": { "minimal": null, "low": "wan2.1_1.3b", "mid": "wan2.2_ti2v_5b", "high": "skyreels_v1" },
     "ugc_product_review": {
       "minimal": null,
       "low": "cogvideox_2b",
-      "mid": "cogvideox_5b",
+      "mid": "wan2.2_ti2v_5b",
       "high": "wan2.2_a14b",
       "note": "Use each model's image-to-video variant, conditioned on reference_image, when product fidelity matters."
     },
     "commercial_product_ad": {
       "minimal": null,
       "low": "cogvideox_2b",
-      "mid": "cogvideox_5b",
+      "mid": "wan2.2_ti2v_5b",
       "high": "skyreels_v1",
       "note": "Use each model's image-to-video variant, conditioned on reference_image, when product fidelity matters."
     },
-    "explainer_testimonial": { "minimal": null, "low": "cogvideox_2b", "mid": "hunyuanvideo_1_5", "high": "skyreels_v1" },
+    "explainer_testimonial": { "minimal": null, "low": "cogvideox_2b", "mid": "wan2.2_ti2v_5b", "high": "skyreels_v1" },
     "presenter_avatar": {
       "minimal": null,
-      "low": "ltx_video",
-      "mid": "ltx_2_5",
-      "high": "ltx_2_5",
-      "note": "Only ltx_2_5 generates dialogue as native synced audio (mid tier uses its ~30GB FP8-quantized path). At the low tier, dialogue/voice_tone must be produced by a separate TTS + lip-sync step layered on top of ltx_video's silent output."
+      "low": null,
+      "mid": null,
+      "high": null,
+      "note": "No freely-licensed model in this catalog does native dialogue/audio. These produce a silent video only; dialogue/voice_tone are not fulfilled by generation itself."
     },
     "social_short_form_ad": {
       "minimal": null,
-      "low": "ltx_video",
-      "mid": "ltx_2_5",
-      "high": "ltx_2_5",
-      "note": "Same native-audio caveat as presenter_avatar for the low tier."
+      "low": "wan2.1_1.3b",
+      "mid": "wan2.2_ti2v_5b",
+      "high": "wan2.2_a14b",
+      "note": "Produces the silent visual only. Same caveat as presenter_avatar applies if dialogue is required."
     },
     "music_video": {
       "minimal": null,
       "low": null,
-      "mid": "ltx_2_5",
-      "high": "ltx_2_5",
-      "note": "ltx_2_5 (FP8-quantized at mid, ~30GB) is the only model in this catalog with native audio sync. No model here fits below ~30GB, so there is no low/minimal option for this type at all."
+      "mid": null,
+      "high": null,
+      "note": "No freely-licensed model in this catalog supports native audio-video sync — LTX-2.5 was the only one and its license isn't unconditionally free. This type currently has no viable pick."
     },
     "motion_graphics": {
-      "minimal": "animatediff",
-      "low": "ltx_video",
-      "mid": "ltx_video",
-      "high": "ltx_video",
+      "minimal": null,
+      "low": "wan2.1_1.3b",
+      "mid": "wan2.2_ti2v_5b",
+      "high": "wan2.2_a14b",
       "note": "No model in this catalog targets abstract/graphic motion-design output; entries here are the fastest-iteration fallback, not a genuine fit."
     }
   }

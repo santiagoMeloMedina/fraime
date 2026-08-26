@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+from abc import ABC
+
+from pydantic import BaseModel, Field, HttpUrl
 
 
 class GenerationParams(BaseModel):
@@ -6,3 +8,7 @@ class GenerationParams(BaseModel):
     fps: int = Field(gt=0, description="Frames per second")
     resolution: str = Field(description="Target resolution, e.g. '1024x576'")
     seed: int | None = Field(default=None, description="Seed for reproducible generation")
+
+
+class Reference(BaseModel, ABC):
+    url: HttpUrl = Field(description="Publicly accessible URL the file is downloaded from")

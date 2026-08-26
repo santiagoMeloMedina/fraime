@@ -37,7 +37,7 @@ class PromptComponents(BaseModel, ABC):
 
 
 class CinematicPromptComponents(PromptComponents):
-    """Pixar, action, generic animation, anime, documentary, fashion — same shape, different vocabulary."""
+    pass
 
 
 class UGCPromptComponents(PromptComponents):
