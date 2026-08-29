@@ -138,5 +138,15 @@ class GenerateVideoRequest(BaseModel):
 
 
 class GenerateVideoResponse(BaseModel):
-    video_path: str = Field(description="Path to the generated .mp4 on the API server")
+    video_path: str | None = Field(
+        default=None,
+        description="Path to the generated .mp4 on the API server, or null if the API is configured for S3 output instead",
+    )
     model: str = Field(description="Hugging Face model id that actually ran")
+    s3_bucket: str | None = Field(
+        default=None, description="S3 bucket the video was uploaded to, if the API has S3 output configured"
+    )
+    s3_key: str | None = Field(default=None, description="S3 object key the video was uploaded to")
+    s3_url: str | None = Field(
+        default=None, description="Presigned GET URL for downloading the video directly from S3, valid for 1 hour"
+    )

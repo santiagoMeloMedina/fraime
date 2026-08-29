@@ -94,6 +94,12 @@ fields that are actually required for specific types
 return a clear tool error if missing, rather than a confusing failure
 downstream.
 
+If the API has `CLOUD_S3_OUTPUT_BUCKET` configured (see
+[`api/README.md`](../api/README.md#s3-output)), the result's `video_path`
+will be `null` and `s3_bucket`, `s3_key`, and a presigned `s3_url` will be
+populated instead — otherwise those three are `null` and `video_path` points
+to the file on the API host as usual.
+
 ### `list_video_types`
 
 Returns every `video_type` and which extra fields it uses on top of the

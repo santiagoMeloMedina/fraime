@@ -80,6 +80,12 @@ print(response.video_path, response.model)
 `model` is optional on `client.generate()` — omit it and the API auto-selects
 by hardware, same as calling it directly.
 
+If the API is configured with `CLOUD_S3_OUTPUT_BUCKET` (see
+[`api/README.md`](../api/README.md#s3-output)), `response.video_path` will be
+`None` and `response.s3_bucket`, `response.s3_key`, and `response.s3_url` (a
+presigned, directly-downloadable link, valid for 1 hour) will be populated
+instead.
+
 ### Picking the right fields class per video type
 
 Every `video_type` has its own field set — some add fields the base six

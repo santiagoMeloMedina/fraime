@@ -7,7 +7,7 @@ ENV_FILE = Path(__file__).resolve().parent / ".env"
 
 
 class GenerationSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="GENERATION_", env_file=ENV_FILE)
+    model_config = SettingsConfigDict(env_prefix="GENERATION_", env_file=ENV_FILE, extra="ignore")
 
     duration_s: float = 5.0
     fps: int = 24
@@ -29,12 +29,20 @@ class AuthSettings(BaseSettings):
     api_key: str | None = None
 
 
+class CloudSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="CLOUD_", env_file=ENV_FILE, extra="ignore")
+
+    s3_output_bucket: str | None = None
+    s3_output_prefix: str | None = None
+
+
 class Environment(BaseSettings):
     model_config = SettingsConfigDict(env_file=ENV_FILE, extra="ignore")
 
     generation: GenerationSettings = GenerationSettings()
     detector: DetectorSettings = DetectorSettings()
     auth: AuthSettings = AuthSettings()
+    cloud: CloudSettings = CloudSettings()
 
 
 environment = Environment()
