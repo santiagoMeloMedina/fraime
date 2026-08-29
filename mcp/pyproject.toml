@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fraime-mcp"
-version = "0.1.0"
+version = "1.0.1"
 description = "MCP server exposing the Fraime video generation API to agentic workflows"
 readme = "README.md"
 license = "MIT"
