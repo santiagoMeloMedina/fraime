@@ -1,0 +1,134 @@
+from pydantic import BaseModel, Field
+
+from fraime import AspectRatio, VideoType
+
+
+class GenerateVideoInput(BaseModel):
+    """Everything needed to generate one video via the Fraime API."""
+
+    video_type: VideoType = Field(
+        description=(
+            "The kind of video to generate; determines which of the fields below are "
+            "actually used, and the style guidance applied server-side. Call "
+            "list_video_types first if unsure which extra fields a type needs."
+        )
+    )
+
+    # Shared prompt fields — used by every video_type.
+    subject: str = Field(
+        description="Main focus of the video: who/what, concrete and visually groundable — avoid vague adjectives"
+    )
+    action: str = Field(
+        description="What happens over the clip: a single continuous motion achievable in a short clip, not a multi-beat sequence"
+    )
+    scene: str = Field(
+        description="Environment, background, and time of day, specific enough to anchor lighting/mood"
+    )
+    camera: str = Field(
+        description="Shot type and camera movement; must be physically compatible with the described action"
+    )
+    lighting: str = Field(
+        description="Lighting style/mood; must not contradict the scene's implied conditions"
+    )
+    style: str = Field(
+        description="A concrete visual/style reference (rendering style, film stock, animation technique) — never a vague quality adjective like 'high quality'"
+    )
+    negative_prompt: str | None = Field(
+        default=None, description="Concrete failure modes to avoid for this content type, not generic boilerplate"
+    )
+
+    # Used by ugc_product_review / commercial_product_ad / explainer_testimonial /
+    # presenter_avatar / social_short_form_ad. Ignored otherwise.
+    dialogue: str | None = Field(
+        default=None, description="Spoken script/dialogue delivered by the subject. Ignored for video types that don't use it."
+    )
+    reference_image: str | None = Field(
+        default=None,
+        description=(
+            "A short text note anchoring product/subject visual fidelity for the prompt "
+            "(this is prompt guidance text, NOT an actual image — for real image "
+            "conditioning use reference_urls instead). Ignored for video types that don't use it."
+        ),
+    )
+
+    # presenter_avatar only.
+    voice_tone: str | None = Field(
+        default=None,
+        description="Directive for how the voice should sound, e.g. 'warm, confident, corporate'. Only used for video_type='presenter_avatar'.",
+    )
+
+    # social_short_form_ad only.
+    text_overlay: str | None = Field(
+        default=None, description="On-screen text/captions overlaid on the video. Only used for video_type='social_short_form_ad'."
+    )
+    aspect_ratio: AspectRatio = Field(
+        default=AspectRatio.VERTICAL_9_16, description="Target aspect ratio. Only used for video_type='social_short_form_ad'."
+    )
+
+    # music_video only.
+    audio_reference: str | None = Field(
+        default=None, description="Reference audio track URL the visuals should sync to. Required when video_type='music_video'."
+    )
+    tempo_bpm: int | None = Field(
+        default=None, description="Beats per minute, to sync visual cuts. Only used for video_type='music_video'."
+    )
+
+    # motion_graphics only.
+    text_content: str | None = Field(
+        default=None, description="On-screen text/copy driving the animation. Required when video_type='motion_graphics'."
+    )
+    transitions: str | None = Field(
+        default=None,
+        description="Transition style between graphic elements, e.g. 'fade, slide, zoom'. Only used for video_type='motion_graphics'.",
+    )
+
+    # Generation parameters.
+    duration_s: float = Field(gt=0, description="Requested clip duration in seconds")
+    fps: int = Field(gt=0, description="Frames per second")
+    resolution: str = Field(
+        description="Target resolution, e.g. '768x512'. Match the picked model's documented shape when possible — an unfamiliar aspect ratio can noticeably degrade output."
+    )
+    seed: int | None = Field(default=None, description="Seed for reproducible generation")
+    num_inference_steps: int | None = Field(
+        default=None,
+        gt=0,
+        description="Denoising steps; lower is faster/lower quality. Omit to use the model's own default (usually 50).",
+    )
+
+    # Model selection / real image conditioning / performance knobs.
+    model: str | None = Field(
+        default=None, description="Explicit Hugging Face model id to use. Omit to auto-select the best model the API's hardware can run."
+    )
+    reference_urls: list[str] | None = Field(
+        default=None,
+        description=(
+            "Publicly accessible image URLs for real image-to-video conditioning — the "
+            "actual images fed to the model, distinct from reference_image above. Presence "
+            "requires image-to-video capability on whichever model gets used."
+        ),
+    )
+    vram_safety_margin: bool = Field(
+        default=True,
+        description="Match auto-selection against 85% of detected VRAM instead of 100%, for headroom against real-world usage spikes. Recommended on.",
+    )
+    low_memory_decode: bool = Field(
+        default=True,
+        description="Decode the VAE output in slices/tiles instead of all at once — trades a little speed for much lower peak memory. Recommended on unless the host has VRAM to spare.",
+    )
+    cpu_offload: bool = Field(
+        default=True,
+        description="Move pipeline components between CPU and the accelerator instead of holding all of them resident at once — trades speed for headroom. Recommended on unless the host has VRAM to spare.",
+    )
+
+
+class GenerateVideoOutput(BaseModel):
+    video_path: str = Field(description="Path to the generated .mp4 on the API server")
+    model: str = Field(description="The Hugging Face model id that actually ran")
+
+
+class VideoTypeInfo(BaseModel):
+    video_type: VideoType
+    fields_class: str = Field(description="Name of the underlying SDK PromptFields class this type uses")
+    extra_fields: list[str] = Field(
+        description="Field names beyond the shared base (subject/action/scene/camera/lighting/style/negative_prompt) that this video type actually uses"
+    )

@@ -1,41 +1,52 @@
 # Fraime
 
-Contexto completo del producto en [idea.md](idea.md). Resumen:
+Full product context in [idea.md](idea.md). Summary:
 
-Plataforma open source de generación de video con IA que detecta automáticamente
-la capacidad de hardware disponible y selecciona el mejor modelo posible para
-generar video, evitando los paywalls de las plataformas cerradas y la fricción
-de implementar modelos open source por cuenta propia.
+Open source AI video generation platform that automatically detects available
+hardware capacity and selects the best possible model to generate video,
+avoiding closed platforms' paywalls and the friction of implementing open
+source models on your own.
 
-## Productos / Componentes
+## Products / Components
 
-El repositorio está organizado en un directorio por componente, en la raíz:
+The repository is organized as one directory per component, at the root:
 
-- `api/` — Motor de generación de video, motor de detección de modelos,
-  autenticación/autorización, seguridad de datos sensibles, integración cloud.
-- `sdk/` — Acceso programático a la API para integrar generación de video en
-  workflows (versionado en paralelo a la API, auth, soporte multi-lenguaje).
-- `mcp/` — Servidor MCP para acceso agéntico a la API desde workflows de IA
-  (contexto generalizado, customización de endpoints).
+- `api/` — Video generation engine, model detection engine,
+  authentication/authorization, sensitive data security, cloud integration.
+- `sdk/` — Programmatic access to the API to integrate video generation into
+  workflows (versioned in parallel with the API, auth, multi-language support).
+- `mcp/` — MCP server for agentic access to the API from AI workflows
+  (generalized context, endpoint customization).
 
-Cada componente es autocontenido: sus dependencias, configuración, tests y
-documentación viven dentro de su propia carpeta, no en la raíz ni mezcladas
-con otro componente.
+Each component is self-contained: its dependencies, configuration, tests, and
+documentation live inside its own folder, not at the root or mixed with
+another component.
 
-## Regla de aislamiento entre componentes
+## Component isolation rule
 
-**Un cambio solicitado para un componente no debe tocar archivos de otro
-componente.**
+**A change requested for one component must not touch files in another
+component.**
 
-- Si la tarea es sobre `api/`, no se modifica nada dentro de `sdk/` ni `mcp/`,
-  y viceversa.
-- Si un cambio en un componente requiere ajustar otro (p. ej. el SDK necesita
-  reflejar un cambio de contrato en la API), eso se trata como una tarea
-  aparte: se señala explícitamente al usuario en vez de hacerlo de forma
-  implícita en el mismo cambio.
-- Archivos verdaderamente compartidos por todo el repo (este `CLAUDE.md`,
-  `idea.md`, configuración de CI/repo a nivel raíz) son la única excepción, y
-  solo se tocan cuando el cambio pedido es explícitamente a nivel de
-  repositorio, no de un componente.
-- Ante ambigüedad sobre a qué componente pertenece un cambio, se pregunta
-  antes de tocar código en más de una carpeta.
+- If the task is about `api/`, nothing inside `sdk/` or `mcp/` is modified,
+  and vice versa.
+- If a change in one component requires adjusting another (e.g. the SDK needs
+  to reflect a contract change in the API), that is treated as a separate
+  task: it is flagged explicitly to the user instead of being done implicitly
+  as part of the same change.
+- Files that are genuinely shared across the whole repo (this `CLAUDE.md`,
+  `idea.md`, root-level CI/repo configuration) are the only exception, and are
+  only touched when the requested change is explicitly repo-level, not
+  component-level.
+- When it's ambiguous which component a change belongs to, ask before
+  touching code in more than one folder.
+
+## Git operations rule
+
+**Never run git operations that modify the repository or remote state** —
+this includes `git add`, `git commit`, and, even more so, `git push`. Also do
+not run other destructive or history-altering operations (`git reset`,
+`git rebase`, `git merge`, creating/deleting branches, etc.).
+
+- Read-only commands (`git status`, `git diff`, `git log`, `git show`, etc.)
+  can be used freely to understand repo state.
+- The user decides when to stage, commit, or push their changes.

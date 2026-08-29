@@ -1,0 +1,66 @@
+{
+  "data_file": "rules.json",
+  "collection_key": "types",
+  "entry_label": "video type",
+  "key_prompt": "Unique video type id (e.g. 'pixar', 'action')",
+  "schemas": {
+    "entry": {
+      "style_guidance": {
+        "type": "string",
+        "required": true,
+        "description": "How this type's prompt should be steered stylistically"
+      },
+      "extra_fields": {
+        "type": "dict",
+        "required": false,
+        "description": "Extra prompt fields this type adds beyond the shared set, each mapped to guidance text"
+      },
+      "evaluation_criteria": {
+        "type": "list_of_objects",
+        "item_schema": "criterion",
+        "key_field": "name",
+        "required": true,
+        "description": "Criteria this type's prompts are checked against, on top of the shared criteria"
+      },
+      "caveat": {
+        "type": "string",
+        "required": false,
+        "description": "Known limitation, e.g. no currently integrated model supports this type well"
+      }
+    },
+    "criterion": {
+      "name": {
+        "type": "string",
+        "required": true,
+        "description": "Unique identifier for the criterion within its scope"
+      },
+      "description": {
+        "type": "string",
+        "required": true,
+        "description": "What is being checked"
+      },
+      "check_type": {
+        "type": "enum",
+        "choices": ["structural", "semantic"],
+        "required": true,
+        "description": "'structural' = deterministically computable; 'semantic' = requires an LLM-as-judge pass"
+      },
+      "severity": {
+        "type": "enum",
+        "choices": ["blocking", "quality"],
+        "required": true,
+        "description": "'blocking' = gates generation; 'quality' = contributes to an aggregate score"
+      },
+      "weight": {
+        "type": "number",
+        "required": false,
+        "description": "Relative importance (0-1) among quality criteria in the same scope; omit for blocking criteria"
+      },
+      "remediation": {
+        "type": "string",
+        "required": true,
+        "description": "What the improve step should try when this criterion fails"
+      }
+    }
+  }
+}

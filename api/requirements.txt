@@ -8,6 +8,8 @@ accelerate
 fastapi
 uvicorn
 httpx
+sentencepiece
+protobuf
 Pillow
 tqdm
 imageio

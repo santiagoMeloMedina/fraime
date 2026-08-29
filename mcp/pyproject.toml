@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fraime-mcp"
+version = "0.1.0"
+description = "MCP server exposing the Fraime video generation API to agentic workflows"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [
+    { name = "Santiago Melo Medina" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "fraime-sdk>=1.0,<2.0",
+    "mcp>=2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "build",
+    "twine",
+]
+
+[project.scripts]
+fraime-mcp = "fraime_mcp.main:main"
+
+[tool.setuptools]
+packages = ["fraime_mcp"]

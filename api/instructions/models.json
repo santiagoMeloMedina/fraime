@@ -1,27 +1,5 @@
 {
   "note": "Curated catalog of open source video generation models, restricted to unconditionally free licenses only (Apache-2.0/MIT, no custom \"community license\", no MAU/revenue thresholds, no academic-only caveats). Verified via web search Aug 2026. Model ids are Hugging Face repo ids intended for DiffusionPipeline.from_pretrained. VRAM figures are sourced from model cards/community benchmarks and vary with resolution/frame count/offloading; treat as approximate. Deliberately excluded despite being otherwise capable: ByteDance Waver 1.0 (not open-weight at all), MiniMax-H3 (license bars local deployment in the US/EU/UK/South Korea), AnimateDiff (README says \"academic use\" despite an Apache-2.0 tag), LTX-Video/LTX-2.5 (LTX Community License: free only under $10M revenue, bars training competing AI systems, bars competing products), CogVideoX-5B (CogVideoX License: requires commercial registration, capped at 1M visits/month), HunyuanVideo-1.5 (Tencent Community License: free only under 100M MAU).",
-  "hardware_tiers": {
-    "minimal": {
-      "vram_gb_min": 4,
-      "vram_gb_max": 8,
-      "description": "Entry-level/laptop GPU. No model in this catalog fits below 8GB now that AnimateDiff (academic-use license) is excluded."
-    },
-    "low": {
-      "vram_gb_min": 8,
-      "vram_gb_max": 12,
-      "description": "Single consumer GPU, e.g. RTX 3060/4060/4070 class."
-    },
-    "mid": {
-      "vram_gb_min": 16,
-      "vram_gb_max": 32,
-      "description": "High-end consumer/prosumer GPU, e.g. RTX 4090/5090, L4/L40S class."
-    },
-    "high": {
-      "vram_gb_min": 40,
-      "vram_gb_max": null,
-      "description": "Datacenter GPU or multi-GPU, e.g. A100/H100 80GB class."
-    }
-  },
   "models": {
     "magi_1_distilled": {
       "id": "sand-ai/MAGI-1",
@@ -29,9 +7,9 @@
       "org": "Sand AI",
       "params": "4.5B",
       "license": "Apache-2.0",
-      "hardware_tier": "low",
       "min_vram_gb": 12,
       "capabilities": ["text-to-video", "image-to-video"],
+      "preferred_for": ["action"],
       "notes": "Autoregressive chunk-based generation (predicts fixed-length video chunks sequentially, next chunk starts before current fully denoises) rather than single-shot diffusion — designed to hold up better over longer/more dynamic motion than same-tier single-shot models. 12GB figure requires window_size=1 in the distill+quant config."
     },
     "wan2.1_1.3b": {
@@ -39,7 +17,6 @@
       "org": "Alibaba",
       "params": "1.3B",
       "license": "Apache-2.0",
-      "hardware_tier": "low",
       "min_vram_gb": 8,
       "capabilities": ["text-to-video"],
       "notes": "Smallest member of the Wan family, explicitly built for consumer GPUs."
@@ -49,9 +26,9 @@
       "org": "Zhipu AI (formerly THUDM)",
       "params": "2B",
       "license": "Apache-2.0",
-      "hardware_tier": "low",
       "min_vram_gb": 8,
       "capabilities": ["text-to-video"],
+      "preferred_for": ["ugc_product_review", "commercial_product_ad", "explainer_testimonial"],
       "notes": "Smaller sibling of CogVideoX-5B — note the 5B is under the restrictive custom CogVideoX License, but the 2B was relicensed to Apache-2.0. Trained in FP16; quantizable further with PytorchAO/Optimum-quanto down to free-tier-Colab-class GPUs."
     },
     "wan2.2_ti2v_5b": {
@@ -59,18 +36,16 @@
       "org": "Alibaba",
       "params": "5B",
       "license": "Apache-2.0",
-      "hardware_tier": "mid",
       "min_vram_gb": 24,
       "min_vram_gb_quantized": 16,
       "capabilities": ["text-to-video", "image-to-video"],
-      "notes": "Unified T2V+I2V in one checkpoint. ~27.4GB at FP16 for 25 frames @ 768x512; FP8 cuts ~40%. Very fast — a 5s 720p clip in under 9 minutes on a single consumer GPU. Currently the only mid-tier model in this catalog."
+      "notes": "Unified T2V+I2V in one checkpoint. ~27.4GB at FP16 for 25 frames @ 768x512; FP8 cuts ~40%. Very fast — a 5s 720p clip in under 9 minutes on a single consumer GPU."
     },
     "wan2.2_a14b": {
       "id": "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
       "org": "Alibaba",
       "params": "27B total / 14B active per step (MoE: high-noise + low-noise experts)",
       "license": "Apache-2.0",
-      "hardware_tier": "high",
       "min_vram_gb": 80,
       "capabilities": ["text-to-video", "image-to-video"],
       "notes": "First open source MoE video model. Default requires an 80GB-class GPU (A100/H100); --offload_model/--t5_cpu flags trade speed for lower VRAM but 80GB is the no-compromise figure."
@@ -80,10 +55,10 @@
       "org": "Genmo",
       "params": "10B",
       "license": "Apache-2.0",
-      "hardware_tier": "high",
       "min_vram_gb": 60,
       "min_vram_gb_optimized": 22,
       "capabilities": ["text-to-video"],
+      "preferred_for": ["action"],
       "notes": "Very strong motion quality/coherence. ~60-70GB single-GPU at full precision for the full 163-frame length; the bf16 variant with ComfyUI-level optimization can run under 22GB, at reduced frame count/speed."
     },
     "skyreels_v1": {
@@ -91,9 +66,9 @@
       "org": "Skywork AI",
       "params": "13B",
       "license": "Apache-2.0",
-      "hardware_tier": "high",
       "min_vram_gb": 40,
       "capabilities": ["text-to-video", "image-to-video"],
+      "preferred_for": ["fashion", "ugc_product_review", "commercial_product_ad", "explainer_testimonial"],
       "notes": "Fine-tuned from HunyuanVideo on ~10M film/TV clips; best open option for human-centric cinematic quality (faces, expression, camera work)."
     },
     "magi_1_full": {
@@ -102,61 +77,45 @@
       "org": "Sand AI",
       "params": "24B",
       "license": "Apache-2.0",
-      "hardware_tier": "high",
       "min_vram_gb": null,
       "capabilities": ["text-to-video", "image-to-video"],
-      "notes": "Full, non-distilled version. Exact VRAM floor not confirmed via search; scaling from the 4.5B variant's ~24GB at standard precision implies an 80GB+ class requirement. Same autoregressive chunk-based architecture as magi_1_distilled, at full quality."
+      "notes": "Full, non-distilled version. Exact VRAM floor not confirmed via search; scaling from the 4.5B variant's ~24GB at standard precision implies an 80GB+ class requirement. Same autoregressive chunk-based architecture as magi_1_distilled, at full quality. min_vram_gb left null (excluded from matching) until a figure is confirmed."
     }
   },
-  "video_type_mapping": {
-    "pixar": { "minimal": null, "low": "wan2.1_1.3b", "mid": "wan2.2_ti2v_5b", "high": "wan2.2_a14b" },
-    "action": { "minimal": null, "low": "magi_1_distilled", "mid": "wan2.2_ti2v_5b", "high": "mochi_1" },
-    "animation": { "minimal": null, "low": "wan2.1_1.3b", "mid": "wan2.2_ti2v_5b", "high": "wan2.2_a14b" },
-    "anime": { "minimal": null, "low": "wan2.1_1.3b", "mid": "wan2.2_ti2v_5b", "high": "wan2.2_a14b" },
-    "documentary": { "minimal": null, "low": "wan2.1_1.3b", "mid": "wan2.2_ti2v_5b", "high": "wan2.2_a14b" },
-    "fashion": { "minimal": null, "low": "wan2.1_1.3b", "mid": "wan2.2_ti2v_5b", "high": "skyreels_v1" },
+  "video_type_capabilities": {
+    "pixar": { "required": ["text-to-video"] },
+    "action": { "required": ["text-to-video"] },
+    "animation": { "required": ["text-to-video"] },
+    "anime": { "required": ["text-to-video"] },
+    "documentary": { "required": ["text-to-video"] },
+    "fashion": { "required": ["text-to-video"] },
     "ugc_product_review": {
-      "minimal": null,
-      "low": "cogvideox_2b",
-      "mid": "wan2.2_ti2v_5b",
-      "high": "wan2.2_a14b",
-      "note": "Use each model's image-to-video variant, conditioned on reference_image, when product fidelity matters."
+      "required": ["text-to-video"],
+      "notes": "Pass reference images to additionally require image-to-video capability, for product fidelity."
     },
     "commercial_product_ad": {
-      "minimal": null,
-      "low": "cogvideox_2b",
-      "mid": "wan2.2_ti2v_5b",
-      "high": "skyreels_v1",
-      "note": "Use each model's image-to-video variant, conditioned on reference_image, when product fidelity matters."
+      "required": ["text-to-video"],
+      "notes": "Pass reference images to additionally require image-to-video capability, for product fidelity."
     },
-    "explainer_testimonial": { "minimal": null, "low": "cogvideox_2b", "mid": "wan2.2_ti2v_5b", "high": "skyreels_v1" },
+    "explainer_testimonial": {
+      "required": ["text-to-video"],
+      "notes": "Pass a reference image to additionally require image-to-video capability, to anchor speaker/product identity."
+    },
     "presenter_avatar": {
-      "minimal": null,
-      "low": null,
-      "mid": null,
-      "high": null,
-      "note": "No freely-licensed model in this catalog does native dialogue/audio. These produce a silent video only; dialogue/voice_tone are not fulfilled by generation itself."
+      "required": ["text-to-video", "audio"],
+      "notes": "No catalog model currently has native audio/dialogue capability; this type has no viable model today."
     },
     "social_short_form_ad": {
-      "minimal": null,
-      "low": "wan2.1_1.3b",
-      "mid": "wan2.2_ti2v_5b",
-      "high": "wan2.2_a14b",
-      "note": "Produces the silent visual only. Same caveat as presenter_avatar applies if dialogue is required."
+      "required": ["text-to-video"],
+      "notes": "Produces a silent visual only; dialogue/voice_tone are not fulfilled by generation itself."
     },
     "music_video": {
-      "minimal": null,
-      "low": null,
-      "mid": null,
-      "high": null,
-      "note": "No freely-licensed model in this catalog supports native audio-video sync — LTX-2.5 was the only one and its license isn't unconditionally free. This type currently has no viable pick."
+      "required": ["text-to-video", "audio-sync"],
+      "notes": "No catalog model currently supports audio-synced generation; this type has no viable model today."
     },
     "motion_graphics": {
-      "minimal": null,
-      "low": "wan2.1_1.3b",
-      "mid": "wan2.2_ti2v_5b",
-      "high": "wan2.2_a14b",
-      "note": "No model in this catalog targets abstract/graphic motion-design output; entries here are the fastest-iteration fallback, not a genuine fit."
+      "required": ["text-to-video"],
+      "notes": "No catalog model specifically targets abstract/graphic motion-design output; a match here is a fallback, not a genuine fit."
     }
   }
 }

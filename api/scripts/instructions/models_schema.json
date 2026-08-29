@@ -1,0 +1,68 @@
+{
+  "data_file": "models.json",
+  "collection_key": "models",
+  "entry_label": "model",
+  "key_prompt": "Unique model key (e.g. 'wan2.2_ti2v_5b')",
+  "schemas": {
+    "entry": {
+      "id": {
+        "type": "string",
+        "required": true,
+        "description": "Hugging Face repo id, intended for DiffusionPipeline.from_pretrained"
+      },
+      "variant": {
+        "type": "string",
+        "required": false,
+        "description": "Checkpoint/variant label when the repo id alone doesn't disambiguate it"
+      },
+      "org": {
+        "type": "string",
+        "required": true,
+        "description": "Organization or lab that produced the model"
+      },
+      "params": {
+        "type": "string",
+        "required": true,
+        "description": "Parameter count, e.g. '5B', or a MoE breakdown like '27B total / 14B active per step'"
+      },
+      "license": {
+        "type": "string",
+        "required": true,
+        "description": "License identifier, e.g. Apache-2.0. Only unconditionally free licenses belong in this catalog."
+      },
+      "min_vram_gb": {
+        "type": "number",
+        "required": true,
+        "nullable": true,
+        "description": "Minimum VRAM in GB at standard precision; null if not confirmed"
+      },
+      "min_vram_gb_quantized": {
+        "type": "number",
+        "required": false,
+        "description": "Minimum VRAM in GB when quantized (only set if meaningfully different from min_vram_gb)"
+      },
+      "min_vram_gb_optimized": {
+        "type": "number",
+        "required": false,
+        "description": "Minimum VRAM in GB with optimized/offloaded inference (only set if meaningfully different from min_vram_gb)"
+      },
+      "capabilities": {
+        "type": "list",
+        "item_type": "enum",
+        "choices": ["text-to-video", "image-to-video", "audio", "audio-sync"],
+        "required": true,
+        "description": "Generation capabilities this model supports"
+      },
+      "preferred_for": {
+        "type": "list",
+        "required": false,
+        "description": "video_type ids (see rules.json) this model has a genuine style/quality edge for, e.g. from its notes — a soft tie-breaker among capability+VRAM matches, not a hard requirement"
+      },
+      "notes": {
+        "type": "string",
+        "required": false,
+        "description": "Caveats, benchmarks, or licensing nuance worth flagging"
+      }
+    }
+  }
+}
