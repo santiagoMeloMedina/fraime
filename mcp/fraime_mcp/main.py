@@ -15,7 +15,13 @@ from fraime.exceptions import FraimeError
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
-from fraime_mcp.model import GenerateVideoInput, GenerateVideoOutput, VideoTypeInfo
+from fraime_mcp.model import (
+    GenerateVideoInput,
+    GenerateVideoOutput,
+    ModelsConfigOutput,
+    RulesConfigOutput,
+    VideoTypeInfo,
+)
 
 server = MCPServer(
     "fraime",
@@ -89,6 +95,37 @@ def list_video_types() -> list[VideoTypeInfo]:
         )
         for video_type, fields_class in PROMPT_FIELDS_BY_VIDEO_TYPE.items()
     ]
+
+
+@server.tool()
+def get_models_config() -> ModelsConfigOutput:
+    """Get the model catalog the Fraime API auto-selects from.
+
+    Lists every catalog model with its capabilities, VRAM requirements,
+    license, and which video_types it's preferred for, plus the capability
+    requirements each video_type imposes on that selection.
+    """
+    try:
+        config = _client.get_models_config()
+    except FraimeError as e:
+        raise ToolError(str(e)) from e
+    return ModelsConfigOutput.model_validate(config.model_dump())
+
+
+@server.tool()
+def get_rules_config() -> RulesConfigOutput:
+    """Get the prompt-structure rules the Fraime API enforces per video_type.
+
+    Includes the field guidance and evaluation criteria shared by every
+    video_type, plus each video_type's own style guidance, extra fields, and
+    additional evaluation criteria. Useful for understanding what makes a
+    prompt score well before calling generate_video.
+    """
+    try:
+        config = _client.get_rules_config()
+    except FraimeError as e:
+        raise ToolError(str(e)) from e
+    return RulesConfigOutput.model_validate(config.model_dump())
 
 
 def _build_fields(input: GenerateVideoInput) -> PromptFields:

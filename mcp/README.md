@@ -107,6 +107,23 @@ shared base — derived directly from the SDK's own typed field classes, so it
 can't drift out of sync with what `generate_video` actually accepts. Meant
 to be called first when an agent isn't sure which fields a given type needs.
 
+### `get_models_config`
+
+Returns the model catalog the API host auto-selects from when `generate_video`
+is called without an explicit `model` — every catalog model's capabilities,
+VRAM requirements, license, and `preferred_for` video types, plus the
+capability requirements each `video_type` imposes on that selection. Backed
+by the API's `GET /config/models` via the SDK's `get_models_config()`.
+
+### `get_rules_config`
+
+Returns the prompt-structure rules the API enforces per `video_type` — the
+field guidance and evaluation criteria shared by every type, plus each
+type's own style guidance, extra fields, and additional criteria. Useful for
+an agent to see what makes a prompt score well before calling
+`generate_video`. Backed by the API's `GET /config/rules` via the SDK's
+`get_rules_config()`.
+
 ## Configuration reference
 
 | Env var | Default | What it controls |

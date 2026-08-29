@@ -137,6 +137,87 @@ class GenerateVideoRequest(BaseModel):
     )
 
 
+class ModelCatalogEntry(BaseModel):
+    """One entry from the API's model catalog (`GET /config/models`)."""
+
+    id: str = Field(description="Hugging Face repo id, intended for DiffusionPipeline.from_pretrained")
+    variant: str | None = Field(
+        default=None, description="Checkpoint/variant label when the repo id alone doesn't disambiguate it"
+    )
+    org: str = Field(description="Organization or lab that produced the model")
+    params: str = Field(description="Parameter count, e.g. '5B', or a MoE breakdown like '27B total / 14B active per step'")
+    license: str = Field(description="License identifier, e.g. Apache-2.0")
+    min_vram_gb: float | None = Field(description="Minimum VRAM in GB at standard precision; null if not confirmed")
+    min_vram_gb_quantized: float | None = Field(
+        default=None, description="Minimum VRAM in GB when quantized (only set if meaningfully different from min_vram_gb)"
+    )
+    min_vram_gb_optimized: float | None = Field(
+        default=None,
+        description="Minimum VRAM in GB with optimized/offloaded inference (only set if meaningfully different from min_vram_gb)",
+    )
+    capabilities: list[str] = Field(description="Generation capabilities this model supports")
+    preferred_for: list[str] | None = Field(
+        default=None, description="video_type ids this model has a genuine style/quality edge for"
+    )
+    notes: str | None = Field(default=None, description="Caveats, benchmarks, or licensing nuance worth flagging")
+
+
+class VideoTypeCapabilityRequirement(BaseModel):
+    """Capability requirements a video_type imposes on model auto-selection."""
+
+    required: list[str] = Field(description="Capabilities a model must have to serve this video_type")
+    notes: str | None = Field(default=None, description="Caveats about this video_type's capability requirements")
+
+
+class ModelsConfig(BaseModel):
+    """The API's model catalog, as returned by `GET /config/models`."""
+
+    models: dict[str, ModelCatalogEntry] = Field(description="Catalog models keyed by their unique model key")
+    video_type_capabilities: dict[str, VideoTypeCapabilityRequirement] = Field(
+        description="Capability requirements per video_type, used to auto-select a matching model"
+    )
+
+
+class EvaluationCriterion(BaseModel):
+    """One prompt-quality or structural check from the API's rules config."""
+
+    name: str = Field(description="Unique identifier for the criterion within its scope")
+    description: str = Field(description="What is being checked")
+    check_type: str = Field(description="'structural' (deterministically computable) or 'semantic' (LLM-as-judge)")
+    severity: str = Field(description="'blocking' (gates generation) or 'quality' (contributes to an aggregate score)")
+    weight: float | None = Field(
+        default=None, description="Relative importance (0-1) among quality criteria in the same scope"
+    )
+    remediation: str = Field(description="What the improve step should try when this criterion fails")
+
+
+class SharedPromptRules(BaseModel):
+    """Prompt rules applied to every video_type."""
+
+    fields: dict[str, str] = Field(description="Guidance text for each shared prompt field")
+    evaluation_criteria: list[EvaluationCriterion] = Field(description="Criteria applied to every video_type")
+
+
+class VideoTypeRules(BaseModel):
+    """Prompt rules specific to one video_type, on top of the shared rules."""
+
+    style_guidance: str = Field(description="How this type's prompt should be steered stylistically")
+    extra_fields: dict[str, str] | None = Field(
+        default=None, description="Extra prompt fields this type adds beyond the shared set, mapped to guidance text"
+    )
+    evaluation_criteria: list[EvaluationCriterion] = Field(
+        description="Criteria this type's prompts are checked against, on top of the shared criteria"
+    )
+    caveat: str | None = Field(default=None, description="Known limitation, e.g. no integrated model supports this type well")
+
+
+class RulesConfig(BaseModel):
+    """The API's prompt rules, as returned by `GET /config/rules`."""
+
+    shared: SharedPromptRules = Field(description="Prompt rules shared by every video_type")
+    types: dict[str, VideoTypeRules] = Field(description="Prompt rules specific to each video_type")
+
+
 class GenerateVideoResponse(BaseModel):
     video_path: str | None = Field(
         default=None,

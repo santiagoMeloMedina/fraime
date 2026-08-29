@@ -12,13 +12,22 @@ class GenerationRepository:
         self._timeout = timeout
 
     def post_generate(self, payload: dict) -> dict:
-        url = f"{self._base_url}/generate"
-        headers = {"Content-Type": "application/json"}
+        return self._request("POST", "/generate", json=payload)
+
+    def get_models_config(self) -> dict:
+        return self._request("GET", "/config/models")
+
+    def get_rules_config(self) -> dict:
+        return self._request("GET", "/config/rules")
+
+    def _request(self, method: str, path: str, **kwargs) -> dict:
+        url = f"{self._base_url}{path}"
+        headers = {"Content-Type": "application/json"} if "json" in kwargs else {}
         if self._api_key:
             headers["Authorization"] = f"Bearer {self._api_key}"
 
         try:
-            response = httpx.post(url, json=payload, headers=headers, timeout=self._timeout)
+            response = httpx.request(method, url, headers=headers, timeout=self._timeout, **kwargs)
         except httpx.RequestError as e:
             raise FraimeConnectionError(f"Failed to reach Fraime API at {url}: {e}") from e
 

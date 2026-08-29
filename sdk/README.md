@@ -124,6 +124,25 @@ response = client.generate(
 )
 ```
 
+### Inspecting the API's configuration
+
+```python
+models_config = client.get_models_config()
+for key, entry in models_config.models.items():
+    print(key, entry.id, entry.capabilities, entry.min_vram_gb)
+
+rules_config = client.get_rules_config()
+print(rules_config.shared.fields)
+print(rules_config.types["pixar"].style_guidance)
+```
+
+`get_models_config()` returns a typed `ModelsConfig` (`models: dict[str, ModelCatalogEntry]`,
+`video_type_capabilities: dict[str, VideoTypeCapabilityRequirement]`) built from the API's
+`GET /config/models`. `get_rules_config()` returns a typed `RulesConfig`
+(`shared: SharedPromptRules`, `types: dict[str, VideoTypeRules]`) built from
+`GET /config/rules`. Both raise the same `FraimeAuthError` /
+`FraimeAPIError` / `FraimeConnectionError` as `generate()` on failure.
+
 ### Error handling
 
 ```python

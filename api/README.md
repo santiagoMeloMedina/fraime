@@ -26,6 +26,10 @@ generates video from a structured prompt.
    accelerator (CUDA/MPS/CPU), VRAM, system RAM, and disk space, then matches
    it directly against each model's real capabilities and VRAM figures — no
    coarse hardware "tiers," just exact numbers compared to exact numbers.
+4. **Introspection endpoints** — `GET /config/models` and `GET /config/rules`
+   return the exact contents of `instructions/models.json` and
+   `instructions/rules.json` the running instance is using, so a client never
+   has to guess or hardcode what's configured server-side.
 
 ## Install
 
@@ -111,6 +115,7 @@ setting has a sensible default if left unset.
 | `GENERATION_MODEL_CACHE_DIR` | Hugging Face's default cache | **Where downloaded model weights are stored.** Models are several to tens of GB each — point this at a volume with real disk space, especially if you'll pull more than one model from the catalog. |
 | `GENERATION_OUTPUT_DIR` | `.generated` | **Where generated `.mp4` files are written.** Created automatically if it doesn't exist; grows with every request, so worth pointing somewhere you're comfortable letting fill up (or cleaning periodically). |
 | `DETECTOR_CATALOG_PATH` | `instructions/models.json` | Path to the model catalog the detector matches against |
+| `PROMPT_RULES_PATH` | `instructions/rules.json` | Path to the prompt rules the `/config/rules` endpoint serves |
 | `AUTH_API_KEY` | unset | If set, every request must send `Authorization: Bearer <key>` matching it. **Unset by default, meaning the API is open with no auth** — set this before exposing the API beyond your own machine. |
 | `CLOUD_S3_OUTPUT_BUCKET` | unset | If set, generated videos are uploaded to this S3 bucket instead of being kept on the host — see [S3 output](#s3-output) below. |
 | `CLOUD_S3_OUTPUT_PREFIX` | unset (bucket root) | Key prefix to upload under within `CLOUD_S3_OUTPUT_BUCKET`. Only used if that bucket is set. |
@@ -185,6 +190,20 @@ When configured:
   "s3_key": "outputs/.<uuid>.mp4",
   "s3_url": "https://my-fraime-videos.s3.amazonaws.com/outputs/.<uuid>.mp4?X-Amz-..."
 }
+```
+
+### Inspecting the running configuration
+
+`GET /config/models` returns the full contents of
+[`instructions/models.json`](instructions/models.json) — the exact catalog
+this instance auto-selects from — and `GET /config/rules` returns the full
+contents of [`instructions/rules.json`](instructions/rules.json), the prompt
+structure/evaluation criteria per video type. Both require the same
+`Authorization: Bearer <key>` header as `/generate` if `AUTH_API_KEY` is set.
+
+```bash
+curl http://127.0.0.1:8000/config/models
+curl http://127.0.0.1:8000/config/rules
 ```
 
 ### Sample output

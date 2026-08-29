@@ -1,4 +1,4 @@
-from fraime.model import GenerateVideoRequest, GenerateVideoResponse
+from fraime.model import GenerateVideoRequest, GenerateVideoResponse, ModelsConfig, RulesConfig
 from fraime.repository import GenerationRepository
 
 
@@ -12,3 +12,11 @@ class GenerationService:
 
         raw = self._repository.post_generate(payload)
         return GenerateVideoResponse.model_validate(raw)
+
+    def get_models_config(self) -> ModelsConfig:
+        raw = self._repository.get_models_config()
+        return ModelsConfig.model_validate(raw)
+
+    def get_rules_config(self) -> RulesConfig:
+        raw = self._repository.get_rules_config()
+        return RulesConfig.model_validate(raw)

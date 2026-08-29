@@ -23,6 +23,12 @@ class DetectorSettings(BaseSettings):
     catalog_path: str = str(Path(__file__).resolve().parent / "instructions" / "models.json")
 
 
+class PromptSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="PROMPT_", env_file=ENV_FILE, extra="ignore")
+
+    rules_path: str = str(Path(__file__).resolve().parent / "instructions" / "rules.json")
+
+
 class AuthSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="AUTH_", env_file=ENV_FILE, extra="ignore")
 
@@ -41,6 +47,7 @@ class Environment(BaseSettings):
 
     generation: GenerationSettings = GenerationSettings()
     detector: DetectorSettings = DetectorSettings()
+    prompt: PromptSettings = PromptSettings()
     auth: AuthSettings = AuthSettings()
     cloud: CloudSettings = CloudSettings()
 

@@ -4,8 +4,10 @@ from fraime.model import (
     GenerateVideoRequest,
     GenerateVideoResponse,
     GenerationParams,
+    ModelsConfig,
     PromptFields,
     Reference,
+    RulesConfig,
     VideoType,
 )
 from fraime.repository import GenerationRepository
@@ -49,3 +51,9 @@ class FraimeClient:
             cpu_offload=cpu_offload,
         )
         return self._service.generate_video(request)
+
+    def get_models_config(self) -> ModelsConfig:
+        return self._service.get_models_config()
+
+    def get_rules_config(self) -> RulesConfig:
+        return self._service.get_rules_config()

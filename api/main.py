@@ -2,6 +2,8 @@ from fastapi import Depends
 
 from api.auth import require_api_key
 from api.config import app
+from api.detector.catalog import load_catalog
+from api.generation.prompt.rules import load_rules
 from api.service import GenerateVideoRequest, generate_video
 
 __all__ = ["app"]
@@ -17,3 +19,13 @@ def generate(request: GenerateVideoRequest) -> dict:
         "s3_key": result.s3_key,
         "s3_url": result.s3_url,
     }
+
+
+@app.get("/config/models", dependencies=[Depends(require_api_key)])
+def get_models_config() -> dict:
+    return load_catalog()
+
+
+@app.get("/config/rules", dependencies=[Depends(require_api_key)])
+def get_rules_config() -> dict:
+    return load_rules()
