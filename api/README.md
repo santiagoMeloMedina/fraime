@@ -112,6 +112,8 @@ setting has a sensible default if left unset.
 | `GENERATION_OUTPUT_DIR` | `.generated` | **Where generated `.mp4` files are written.** Created automatically if it doesn't exist; grows with every request, so worth pointing somewhere you're comfortable letting fill up (or cleaning periodically). |
 | `DETECTOR_CATALOG_PATH` | `instructions/models.json` | Path to the model catalog the detector matches against |
 | `AUTH_API_KEY` | unset | If set, every request must send `Authorization: Bearer <key>` matching it. **Unset by default, meaning the API is open with no auth** — set this before exposing the API beyond your own machine. |
+| `CLOUD_S3_OUTPUT_BUCKET` | unset | If set, generated videos are uploaded to this S3 bucket instead of being kept on the host — see [S3 output](#s3-output) below. |
+| `CLOUD_S3_OUTPUT_PREFIX` | unset (bucket root) | Key prefix to upload under within `CLOUD_S3_OUTPUT_BUCKET`. Only used if that bucket is set. |
 
 ## Using the API
 
@@ -148,7 +150,41 @@ The response reports which model actually ran, since it may not be the one
 you'd expect if it was auto-selected:
 
 ```json
-{"video_path": ".generated/<uuid>.mp4", "model": "Wan-AI/Wan2.2-TI2V-5B-Diffusers"}
+{
+  "video_path": ".generated/<uuid>.mp4",
+  "model": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+  "s3_bucket": null,
+  "s3_key": null,
+  "s3_url": null
+}
+```
+
+### S3 output
+
+Set `CLOUD_S3_OUTPUT_BUCKET` to upload the generated video to S3 instead of
+leaving it on the host. `CLOUD_S3_OUTPUT_PREFIX` is optional — leave it unset
+to upload at the bucket root. Credentials are resolved the standard boto3
+way (environment, `~/.aws/credentials`, instance role, etc.) — there's no
+separate credential setting.
+
+When configured:
+- Before generation starts, the API does a test write to the destination
+  key to confirm it has access — if that fails, the request is rejected
+  immediately with **403 Forbidden**, instead of only finding out after
+  several minutes of generation.
+- On success, the video is uploaded to that key (replacing the test write),
+  `video_path` is omitted from the response (`null`), and `s3_bucket`,
+  `s3_key`, and a presigned `s3_url` (valid for 1 hour, enough to download
+  the video) are populated instead:
+
+```json
+{
+  "video_path": null,
+  "model": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+  "s3_bucket": "my-fraime-videos",
+  "s3_key": "outputs/.<uuid>.mp4",
+  "s3_url": "https://my-fraime-videos.s3.amazonaws.com/outputs/.<uuid>.mp4?X-Amz-..."
+}
 ```
 
 ### Sample output

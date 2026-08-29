@@ -64,7 +64,13 @@ def generate_video(input: GenerateVideoInput) -> GenerateVideoOutput:
         # message instead of an opaque crash.
         raise ToolError(str(e)) from e
 
-    return GenerateVideoOutput(video_path=response.video_path, model=response.model)
+    return GenerateVideoOutput(
+        video_path=response.video_path,
+        model=response.model,
+        s3_bucket=response.s3_bucket,
+        s3_key=response.s3_key,
+        s3_url=response.s3_url,
+    )
 
 
 @server.tool()

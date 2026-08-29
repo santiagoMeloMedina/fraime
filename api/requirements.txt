@@ -14,3 +14,4 @@ Pillow
 tqdm
 imageio
 imageio-ffmpeg
+boto3

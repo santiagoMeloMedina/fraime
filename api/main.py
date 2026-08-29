@@ -9,5 +9,11 @@ __all__ = ["app"]
 
 @app.post("/generate", dependencies=[Depends(require_api_key)])
 def generate(request: GenerateVideoRequest) -> dict:
-    video_path, model = generate_video(request)
-    return {"video_path": video_path, "model": model}
+    result = generate_video(request)
+    return {
+        "video_path": result.video_path,
+        "model": result.model,
+        "s3_bucket": result.s3_bucket,
+        "s3_key": result.s3_key,
+        "s3_url": result.s3_url,
+    }
