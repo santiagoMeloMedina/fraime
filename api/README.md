@@ -6,30 +6,23 @@ generates video from a structured prompt.
 
 ## Features
 
-0. **Video generation API with customizable models** — a single `/generate`
-   endpoint that works with any `diffusers`-compatible Hugging Face model.
-   Pass `model` explicitly to pin one, or omit it and let the hardware
-   detector pick automatically. Generation itself is tunable per request:
-   duration, fps, resolution, seed, denoising steps, and memory/performance
-   trade-offs (CPU offload, VAE tiling, VRAM safety margin).
-1. **Its own model catalog, with a customization tool** — models ship in
-   [`instructions/models.json`](instructions/models.json) (capabilities,
-   VRAM requirements, license, style strengths). Extend it — add, edit,
-   delete, or wipe entries — with the interactive `define` tool instead of
-   hand-editing JSON.
-2. **Prompt structure per video type, with the same customization tool** —
-   [`instructions/rules.json`](instructions/rules.json) defines the fields,
-   style guidance, and evaluation criteria for each video type (`pixar`,
-   `action`, `ugc_product_review`, `commercial_product_ad`, ...). Also
-   editable through `define`.
-3. **Hardware detector for optimal model selection** — detects your
-   accelerator (CUDA/MPS/CPU), VRAM, system RAM, and disk space, then matches
-   it directly against each model's real capabilities and VRAM figures — no
-   coarse hardware "tiers," just exact numbers compared to exact numbers.
-4. **Introspection endpoints** — `GET /config/models` and `GET /config/rules`
-   return the exact contents of `instructions/models.json` and
-   `instructions/rules.json` the running instance is using, so a client never
-   has to guess or hardcode what's configured server-side.
+- **`POST /generate`** — works with any `diffusers`-compatible Hugging Face
+  model. Pass `model` to pin one, or omit it for auto-selection. Tunable per
+  request: duration, fps, resolution, seed, denoising steps, CPU offload,
+  VAE tiling, VRAM safety margin.
+- **Model catalog** — [`instructions/models.json`](instructions/models.json)
+  (capabilities, VRAM requirements, license, style strengths), editable with
+  the `define` tool.
+- **Prompt rules per video type** —
+  [`instructions/rules.json`](instructions/rules.json) defines fields, style
+  guidance, and evaluation criteria per video type (`pixar`, `action`,
+  `ugc_product_review`, `commercial_product_ad`, ...), also editable with
+  `define`.
+- **Hardware detector** — reads accelerator (CUDA/MPS/CPU), VRAM, system RAM,
+  and disk space, and matches those exact figures against each catalog
+  model's requirements.
+- **`GET /config/models`, `GET /config/rules`** — return the running
+  instance's `instructions/models.json` and `instructions/rules.json`.
 
 ## Install
 
@@ -68,12 +61,9 @@ make define           # from api/
 
 Launches the interactive catalog editor
 ([`scripts/instructions/define.py`](scripts/instructions/define.py)). Pick
-`models` or `rules`, then a numbered list of existing entries lets you edit
-or delete one, or add a new one / erase all. Each instruction type is driven
-by its own schema file next to the script
-(`scripts/instructions/models_schema.json`,
-`scripts/instructions/rules_schema.json`) — the data itself lives in
-`instructions/`.
+`models` or `rules`, then edit, delete, add, or wipe entries. Schemas:
+`scripts/instructions/models_schema.json`,
+`scripts/instructions/rules_schema.json`. Data: `instructions/`.
 
 ## Docker
 
@@ -94,12 +84,9 @@ docker run --gpus all -p 8000:8000 --env-file .env santsq18/framie-api:latest
 ```
 
 **This Dockerfile will not work with MPS.** Docker containers can't access
-Apple's Metal backend, so running this image on a Mac — even one with a
-capable Apple Silicon GPU — always falls back to CPU generation inside the
-container, regardless of what the detector reports on the host. This image
-is meant for a Linux host with an NVIDIA GPU (e.g. one of the AWS instances
-discussed for this project), not for local Mac development; use `make run`
-(outside Docker) there instead.
+Apple's Metal backend, so this image falls back to CPU generation on a Mac
+regardless of the host's GPU. Use it on a Linux host with an NVIDIA GPU; on
+Mac use `make run` outside Docker instead.
 
 ## Environment variables
 
@@ -112,13 +99,13 @@ setting has a sensible default if left unset.
 | `GENERATION_FPS` | `24` | Default frames per second |
 | `GENERATION_RESOLUTION` | `1024x576` | Default target resolution |
 | `GENERATION_SEED` | unset | Default seed for reproducible generation |
-| `GENERATION_MODEL_CACHE_DIR` | Hugging Face's default cache | **Where downloaded model weights are stored.** Models are several to tens of GB each — point this at a volume with real disk space, especially if you'll pull more than one model from the catalog. |
-| `GENERATION_OUTPUT_DIR` | `.generated` | **Where generated `.mp4` files are written.** Created automatically if it doesn't exist; grows with every request, so worth pointing somewhere you're comfortable letting fill up (or cleaning periodically). |
+| `GENERATION_MODEL_CACHE_DIR` | Hugging Face's default cache | Where downloaded model weights (several to tens of GB each) are stored |
+| `GENERATION_OUTPUT_DIR` | `.generated` | Where generated `.mp4` files are written; created automatically |
 | `DETECTOR_CATALOG_PATH` | `instructions/models.json` | Path to the model catalog the detector matches against |
 | `PROMPT_RULES_PATH` | `instructions/rules.json` | Path to the prompt rules the `/config/rules` endpoint serves |
-| `AUTH_API_KEY` | unset | If set, every request must send `Authorization: Bearer <key>` matching it. **Unset by default, meaning the API is open with no auth** — set this before exposing the API beyond your own machine. |
-| `CLOUD_S3_OUTPUT_BUCKET` | unset | If set, generated videos are uploaded to this S3 bucket instead of being kept on the host — see [S3 output](#s3-output) below. |
-| `CLOUD_S3_OUTPUT_PREFIX` | unset (bucket root) | Key prefix to upload under within `CLOUD_S3_OUTPUT_BUCKET`. Only used if that bucket is set. |
+| `AUTH_API_KEY` | unset (no auth) | If set, requests must send `Authorization: Bearer <key>` matching it |
+| `CLOUD_S3_OUTPUT_BUCKET` | unset | If set, generated videos upload to this S3 bucket instead of the host — see [S3 output](#s3-output) |
+| `CLOUD_S3_OUTPUT_PREFIX` | unset (bucket root) | Key prefix to upload under within `CLOUD_S3_OUTPUT_BUCKET` |
 
 ## Using the API
 
@@ -151,8 +138,7 @@ curl -X POST http://127.0.0.1:8000/generate \
 If `AUTH_API_KEY` is set, add
 `-H "Authorization: Bearer <your-key>"` to the request.
 
-The response reports which model actually ran, since it may not be the one
-you'd expect if it was auto-selected:
+Response:
 
 ```json
 {
@@ -167,20 +153,16 @@ you'd expect if it was auto-selected:
 ### S3 output
 
 Set `CLOUD_S3_OUTPUT_BUCKET` to upload the generated video to S3 instead of
-leaving it on the host. `CLOUD_S3_OUTPUT_PREFIX` is optional — leave it unset
-to upload at the bucket root. Credentials are resolved the standard boto3
-way (environment, `~/.aws/credentials`, instance role, etc.) — there's no
-separate credential setting.
+the host. `CLOUD_S3_OUTPUT_PREFIX` is optional (default: bucket root).
+Credentials resolve the standard boto3 way (environment,
+`~/.aws/credentials`, instance role, etc.).
 
 When configured:
 - Before generation starts, the API does a test write to the destination
-  key to confirm it has access — if that fails, the request is rejected
-  immediately with **403 Forbidden**, instead of only finding out after
-  several minutes of generation.
-- On success, the video is uploaded to that key (replacing the test write),
-  `video_path` is omitted from the response (`null`), and `s3_bucket`,
-  `s3_key`, and a presigned `s3_url` (valid for 1 hour, enough to download
-  the video) are populated instead:
+  key; failure returns **403 Forbidden** immediately.
+- On success, the video is uploaded to that key, `video_path` is `null`, and
+  `s3_bucket`, `s3_key`, and a presigned `s3_url` (valid for 1 hour) are
+  populated instead:
 
 ```json
 {
@@ -195,11 +177,10 @@ When configured:
 ### Inspecting the running configuration
 
 `GET /config/models` returns the full contents of
-[`instructions/models.json`](instructions/models.json) — the exact catalog
-this instance auto-selects from — and `GET /config/rules` returns the full
-contents of [`instructions/rules.json`](instructions/rules.json), the prompt
-structure/evaluation criteria per video type. Both require the same
-`Authorization: Bearer <key>` header as `/generate` if `AUTH_API_KEY` is set.
+[`instructions/models.json`](instructions/models.json); `GET /config/rules`
+returns [`instructions/rules.json`](instructions/rules.json). Both require
+the same `Authorization: Bearer <key>` header as `/generate` if
+`AUTH_API_KEY` is set.
 
 ```bash
 curl http://127.0.0.1:8000/config/models
@@ -208,8 +189,7 @@ curl http://127.0.0.1:8000/config/rules
 
 ### Sample output
 
-Generated with the exact request above — the model picked will depend on
-your own hardware, so this won't be byte-identical to what you get locally:
+Generated with the request above:
 
 ![assets/demo.gif](assets/demo.gif)
 
