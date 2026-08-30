@@ -12,7 +12,7 @@ supported, with more planned.
 
 ## The problem
 
-AI video generation today is either hidden behind paywalls that get more
+AI media generation today is either hidden behind paywalls that get more
 expensive the more you use them, or "free" in name only — the open source
 models exist, but actually running one yourself means figuring out which
 model fits your hardware, wiring up prompt structure, and managing the whole
