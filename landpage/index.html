@@ -190,6 +190,7 @@ pre{margin:0;background:var(--surface);border:1px solid var(--line);border-radiu
 
 .demo-frame{margin-top:56px;border-radius:20px;overflow:hidden;border:1px solid var(--line);background:#0c0c0e;box-shadow:0 24px 60px -30px rgba(0,0,0,.5)}
 .demo-frame video{width:100%;display:block;aspect-ratio:3/2;max-height:520px;background:#0c0c0e;object-fit:contain}
+#demoVideo{object-fit:cover;aspect-ratio:1940/1536;max-height:none}
 
 .cta{text-align:center;padding:118px 0}
 .cta h2{font-size:clamp(32px,5vw,54px);font-weight:700;max-width:19ch;margin:0 auto}
@@ -482,7 +483,7 @@ curl -X POST http://127.0.0.1:8000/generate \
   <p class="sec-sub">Auto-selected model, structured prompt, generated end-to-end — no manual pipeline wrangling.</p>
 
   <div class="demo-frame">
-    <video controls preload="none" poster="https://fraimesmm.art/assets/demo.gif">
+    <video id="demoVideo" autoplay muted loop playsinline preload="auto" poster="https://fraimesmm.art/assets/demo.gif">
       <source src="https://fraimesmm.art/assets/demo.mp4" type="video/mp4">
       Your browser doesn't support embedded video —
       <a href="https://fraimesmm.art/assets/demo.mp4">watch it directly</a>.
@@ -500,7 +501,7 @@ curl -X POST http://127.0.0.1:8000/generate \
   <p class="sec-sub">Generated end-to-end on consumer hardware — no editing, no cherry-picked takes.</p>
 
   <div class="demo-frame">
-    <video id="showcaseVideo" controls muted loop playsinline preload="auto">
+    <video id="showcaseVideo" muted loop playsinline preload="auto">
       <source src="https://fraimesmm.art/assets/product.mp4" type="video/mp4">
       Your browser doesn't support embedded video —
       <a href="https://fraimesmm.art/assets/product.mp4">watch it directly</a>.
