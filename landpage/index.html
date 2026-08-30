@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fraime — Open source AI video generation platform</title>
+<title>Fraime — Open source AI media generation platform</title>
 <meta name="description" content="Fraime detects your hardware and picks the best open source video model it can actually run — no token-metered paywall, no manual model wrangling.">
 <link rel="icon" type="image/png" href="https://fraimesmm.art/assets/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -60,7 +60,22 @@ nav{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 86%,
 .btn-ghost:hover{border-color:var(--ink)}
 .icon-btn{width:42px;height:42px;border-radius:10px;border:1.5px solid var(--line);background:transparent;color:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.18s;flex-shrink:0}
 .icon-btn:hover{border-color:var(--ink)}
-@media (max-width:900px){.nav-links a:not(.btn){display:none}}
+.nav-toggle{display:none;margin-left:auto}
+.nav-toggle .icon-close{display:none}
+nav.menu-open .nav-toggle .icon-menu{display:none}
+nav.menu-open .nav-toggle .icon-close{display:block}
+@media (max-width:860px){
+  .nav-toggle{display:flex}
+  .nav-links{position:absolute;top:100%;left:0;right:0;margin-left:0;z-index:49;
+    flex-direction:column;align-items:stretch;gap:2px;
+    background:var(--bg);border-bottom:1px solid var(--line-soft);
+    padding:6px 32px 20px;max-height:0;overflow-y:auto;opacity:0;pointer-events:none;
+    transition:max-height .22s ease,opacity .18s ease}
+  nav.menu-open .nav-links{max-height:calc(100vh - 72px);opacity:1;pointer-events:auto}
+  .nav-links a:not(.btn){display:block;padding:14px 2px;font-size:16px;border-bottom:1px solid var(--line-soft)}
+  .nav-links .btn{width:100%;justify-content:center;margin-top:8px}
+  .nav-links #theme{align-self:flex-start;margin-top:10px}
+}
 
 .hero{position:relative;overflow:hidden;padding:118px 0 92px;text-align:center}
 .hero-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none;
@@ -171,10 +186,10 @@ pre{margin:0;background:var(--surface);border:1px solid var(--line);border-radiu
 .cli-body{padding:16px 18px;font-family:var(--mono);font-size:12.5px;line-height:1.95;overflow-x:auto}
 .cli-cmd{color:var(--ink);font-weight:500;display:block;word-break:break-all}
 .cli-cmd::before{content:"$ ";color:var(--muted)}
-.cli-note{color:var(--muted);display:block}
+.cli-note{color:var(--muted);display:block;word-break:break-all}
 
 .demo-frame{margin-top:56px;border-radius:20px;overflow:hidden;border:1px solid var(--line);background:#0c0c0e;box-shadow:0 24px 60px -30px rgba(0,0,0,.5)}
-.demo-frame video{width:100%;display:block;max-height:520px;background:#0c0c0e}
+.demo-frame video{width:100%;display:block;aspect-ratio:3/2;max-height:520px;background:#0c0c0e;object-fit:contain}
 
 .cta{text-align:center;padding:118px 0}
 .cta h2{font-size:clamp(32px,5vw,54px);font-weight:700;max-width:19ch;margin:0 auto}
@@ -186,9 +201,9 @@ footer{border-top:1px solid var(--line-soft);padding:44px 0;font-size:14.5px;col
 </head>
 <body>
 
-<nav><div class="wrap nav-in">
+<nav id="siteNav"><div class="wrap nav-in">
   <a href="#" class="brand"><img src="https://fraimesmm.art/assets/logo.png" alt="">Fraime</a>
-  <div class="nav-links">
+  <div class="nav-links" id="navMenu">
     <a href="#problem">Why Fraime</a>
     <a href="#how">How it works</a>
     <a href="#products">Products</a>
@@ -197,8 +212,15 @@ footer{border-top:1px solid var(--line-soft);padding:44px 0;font-size:14.5px;col
       <svg width="17" height="17" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="1.6"/><path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6L16 16M16 4l-1.4 1.4M5.4 14.6L4 16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
     </button>
     <a class="btn btn-ghost" href="https://buymeacoffee.com/smelomedina" target="_blank" rel="noopener">Buy me a coffee</a>
-    <a class="btn btn-primary" href="https://fraimesmm.art/assets/demo.mp4" target="_blank" rel="noopener">Watch demo →</a>
+    <a class="btn btn-primary" href="https://github.com/santiagoMeloMedina/fraime" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+      View on GitHub
+    </a>
   </div>
+  <button type="button" class="icon-btn nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="navMenu">
+    <svg class="icon-menu" width="17" height="17" viewBox="0 0 20 20" fill="none"><path d="M3 5.5h14M3 10h14M3 14.5h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    <svg class="icon-close" width="17" height="17" viewBox="0 0 20 20" fill="none"><path d="M4.5 4.5l11 11M15.5 4.5l-11 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+  </button>
 </div></nav>
 
 <header class="hero">
@@ -211,8 +233,8 @@ footer{border-top:1px solid var(--line-soft);padding:44px 0;font-size:14.5px;col
   </div>
 
   <div class="wrap hero-in">
-    <div class="eyebrow"><span class="dot"></span>Open source AI video generation platform</div>
-    <h1>Video generation without <b>the paywall or the guesswork.</b></h1>
+    <div class="eyebrow"><span class="dot"></span>Open source AI media generation platform</div>
+    <h1>Media generation without <b>the paywall or the guesswork.</b></h1>
     <p class="lede">
       AI video today is either hidden behind a paywall that gets more expensive the more you use
       it, or "free" in name only — the open models exist, but running one yourself means figuring
@@ -220,7 +242,10 @@ footer{border-top:1px solid var(--line-soft);padding:44px 0;font-size:14.5px;col
       <strong>Fraime detects your hardware and picks the best open model it can actually run.</strong>
     </p>
     <div class="hero-cta">
-      <a class="btn btn-primary" href="https://fraimesmm.art/assets/demo.mp4" target="_blank" rel="noopener">Watch the demo</a>
+      <a class="btn btn-primary" href="https://github.com/santiagoMeloMedina/fraime" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        View on GitHub
+      </a>
       <a class="btn btn-ghost" href="#products">See the products</a>
     </div>
     <div class="hero-note"><code>pip install fraime-sdk</code> · MIT licensed · self-hosted, no token metering</div>
@@ -469,17 +494,31 @@ curl -X POST http://127.0.0.1:8000/generate \
   </p>
 </div></section>
 
+<section id="showcase"><div class="wrap">
+  <div class="center"><div class="eyebrow">Made with Fraime</div></div>
+  <h2 class="sec-title">A real product video, start to finish.</h2>
+  <p class="sec-sub">Generated end-to-end on consumer hardware — no editing, no cherry-picked takes.</p>
+
+  <div class="demo-frame">
+    <video id="showcaseVideo" controls muted loop playsinline preload="auto">
+      <source src="https://fraimesmm.art/assets/product.mp4" type="video/mp4">
+      Your browser doesn't support embedded video —
+      <a href="https://fraimesmm.art/assets/product.mp4">watch it directly</a>.
+    </video>
+  </div>
+</div></section>
+
 <section class="cta"><div class="wrap">
   <h2>Your hardware can already do this.</h2>
   <p>Self-hosted, MIT licensed, no per-token bill — pick a component and start.</p>
   <div class="cta-row">
-    <a class="btn btn-primary" href="https://fraimesmm.art/assets/demo.mp4" target="_blank" rel="noopener">Watch the demo</a>
+    <a class="btn btn-primary" href="#products">Pick a component →</a>
     <a class="btn btn-ghost" href="https://buymeacoffee.com/smelomedina" target="_blank" rel="noopener">Buy me a coffee</a>
   </div>
 </div></section>
 
 <footer><div class="wrap foot-in">
-  <span>Fraime — Open source AI video generation platform</span>
+  <span>Fraime — Open source AI media generation platform</span>
   <span>MIT licensed · Video today, more media planned</span>
 </div></footer>
 
@@ -495,6 +534,26 @@ curl -X POST http://127.0.0.1:8000/generate \
     root.setAttribute('data-theme',next);
     localStorage.setItem(KEY,next);
   });
+})();
+(function(){
+  var nav=document.getElementById('siteNav'), toggle=document.getElementById('navToggle'), menu=document.getElementById('navMenu');
+  function close(){ nav.classList.remove('menu-open'); toggle.setAttribute('aria-expanded','false'); }
+  toggle.addEventListener('click',function(){
+    var open=nav.classList.toggle('menu-open');
+    toggle.setAttribute('aria-expanded',open?'true':'false');
+  });
+  menu.querySelectorAll('a').forEach(function(a){ a.addEventListener('click',close); });
+  matchMedia('(min-width:861px)').addEventListener('change',function(e){ if(e.matches) close(); });
+})();
+(function(){
+  var video=document.getElementById('showcaseVideo');
+  if(!video || !('IntersectionObserver' in window)) return;
+  new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting) video.play().catch(function(){});
+      else video.pause();
+    });
+  },{threshold:0.5}).observe(video);
 })();
 </script>
 </body>
