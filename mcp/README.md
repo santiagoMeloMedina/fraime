@@ -1,10 +1,7 @@
 # Fraime MCP Server
 
 MCP server exposing the [Fraime API](../api/README.md) to agentic workflows,
-built directly on top of the [Fraime SDK](../sdk/README.md)'s `FraimeClient`
-— which already is this server's entire data-access layer, so there's no
-separate repository/service indirection here: `model.py` holds the MCP tool
-schema, `main.py` holds the routing logic and the server itself.
+built on top of the [Fraime SDK](../sdk/README.md)'s `FraimeClient`.
 
 ## Prerequisites
 
@@ -44,9 +41,8 @@ make run-mcp   # from repo root
 make run       # from mcp/
 ```
 
-Runs the server over stdio (the standard MCP transport for locally-launched
-servers) — it won't print anything and will just wait for a client to
-connect; that's normal, not a hang.
+Runs the server over stdio. It prints nothing and waits for a client to
+connect.
 
 ## Configuring an MCP client
 
@@ -78,51 +74,45 @@ install (Option 2). For a `pip install fraime-mcp` into your own venv, point
 
 ### `generate_video`
 
-Generates one video. Every parameter the API's `/generate` endpoint accepts
-is exposed, with rich field descriptions so an agent can fill it in without
-prior knowledge of the schema — shared prompt fields (`subject`, `action`,
-`scene`, `camera`, `lighting`, `style`, `negative_prompt`), the video-type-specific
-extras (`dialogue`, `voice_tone`, `text_overlay`, `aspect_ratio`,
-`audio_reference`, `tempo_bpm`, `text_content`, `transitions`), generation
-params (`duration_s`, `fps`, `resolution`, `seed`, `num_inference_steps`),
-and the model/performance knobs (`model`, `reference_urls`,
-`vram_safety_margin`, `low_memory_decode`, `cpu_offload`).
+Generates one video.
 
-Fields that don't apply to the chosen `video_type` are simply ignored; two
-fields that are actually required for specific types
-(`audio_reference` for `music_video`, `text_content` for `motion_graphics`)
-return a clear tool error if missing, rather than a confusing failure
-downstream.
+- Shared prompt fields: `subject`, `action`, `scene`, `camera`, `lighting`,
+  `style`, `negative_prompt`
+- Video-type-specific extras: `dialogue`, `voice_tone`, `text_overlay`,
+  `aspect_ratio`, `audio_reference`, `tempo_bpm`, `text_content`,
+  `transitions`
+- Generation params: `duration_s`, `fps`, `resolution`, `seed`,
+  `num_inference_steps`
+- Model/performance knobs: `model`, `reference_urls`, `vram_safety_margin`,
+  `low_memory_decode`, `cpu_offload`
+
+Fields that don't apply to the chosen `video_type` are ignored. `audio_reference`
+is required for `music_video`; `text_content` is required for
+`motion_graphics` — omitting either returns a tool error.
 
 If the API has `CLOUD_S3_OUTPUT_BUCKET` configured (see
-[`api/README.md`](../api/README.md#s3-output)), the result's `video_path`
-will be `null` and `s3_bucket`, `s3_key`, and a presigned `s3_url` will be
-populated instead — otherwise those three are `null` and `video_path` points
-to the file on the API host as usual.
+[`api/README.md`](../api/README.md#s3-output)), the result's `video_path` is
+`null` and `s3_bucket`, `s3_key`, and a presigned `s3_url` are populated
+instead; otherwise those three are `null` and `video_path` points to the
+file on the API host.
 
 ### `list_video_types`
 
 Returns every `video_type` and which extra fields it uses on top of the
-shared base — derived directly from the SDK's own typed field classes, so it
-can't drift out of sync with what `generate_video` actually accepts. Meant
-to be called first when an agent isn't sure which fields a given type needs.
+shared base fields.
 
 ### `get_models_config`
 
 Returns the model catalog the API host auto-selects from when `generate_video`
-is called without an explicit `model` — every catalog model's capabilities,
-VRAM requirements, license, and `preferred_for` video types, plus the
-capability requirements each `video_type` imposes on that selection. Backed
-by the API's `GET /config/models` via the SDK's `get_models_config()`.
+is called without an explicit `model`: every model's capabilities, VRAM
+requirements, license, and `preferred_for` video types, plus the capability
+requirements each `video_type` imposes on that selection.
 
 ### `get_rules_config`
 
-Returns the prompt-structure rules the API enforces per `video_type` — the
-field guidance and evaluation criteria shared by every type, plus each
-type's own style guidance, extra fields, and additional criteria. Useful for
-an agent to see what makes a prompt score well before calling
-`generate_video`. Backed by the API's `GET /config/rules` via the SDK's
-`get_rules_config()`.
+Returns the prompt-structure rules the API enforces per `video_type`: field
+guidance and evaluation criteria shared by every type, plus each type's own
+style guidance, extra fields, and additional criteria.
 
 ## Configuration reference
 

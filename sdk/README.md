@@ -1,15 +1,13 @@
 # Fraime SDK
 
-Python client for the [Fraime API](../api/README.md) — build a request with
-typed models/enums instead of hand-writing JSON, point it at a running
-Fraime instance, get a generated video back.
+Python client for the [Fraime API](../api/README.md): typed models/enums for
+building a generation request, instead of hand-writing JSON.
 
 ## Prerequisites
 
 - Python 3.11+
-- A running Fraime API instance to talk to (see [`api/README.md`](../api/README.md)
-  for how to run one) — you'll need its base URL, and its API key if one is
-  configured (`AUTH_API_KEY` on the API side).
+- A running Fraime API instance (see [`api/README.md`](../api/README.md)) —
+  its base URL, and its API key if `AUTH_API_KEY` is set.
 
 ## Install
 
@@ -38,16 +36,11 @@ pip install ./sdk
 pip install -e ./sdk
 ```
 
-That's it — `import fraime` is now available in that environment.
-
 ### Option 3 — straight from git, no local clone needed
 
 ```bash
 pip install "git+ssh://git@santiago/santiagoMeloMedina/fraime.git#subdirectory=sdk"
 ```
-
-(Adjust the URL to whatever remote you actually have push/pull access to —
-this is this repo's own `origin` in SSH form.)
 
 ## Usage
 
@@ -77,14 +70,12 @@ response = client.generate(
 print(response.video_path, response.model)
 ```
 
-`model` is optional on `client.generate()` — omit it and the API auto-selects
-by hardware, same as calling it directly.
+`model` is optional — omit it and the API auto-selects by hardware.
 
 If the API is configured with `CLOUD_S3_OUTPUT_BUCKET` (see
-[`api/README.md`](../api/README.md#s3-output)), `response.video_path` will be
+[`api/README.md`](../api/README.md#s3-output)), `response.video_path` is
 `None` and `response.s3_bucket`, `response.s3_key`, and `response.s3_url` (a
-presigned, directly-downloadable link, valid for 1 hour) will be populated
-instead.
+presigned link, valid for 1 hour) are populated instead.
 
 ### Picking the right fields class per video type
 
@@ -101,8 +92,7 @@ Every `video_type` has its own field set — some add fields the base six
 | `MUSIC_VIDEO` | `MusicVideoPromptFields` | `audio_reference`, `tempo_bpm` |
 | `MOTION_GRAPHICS` | `MotionGraphicsPromptFields` | `text_content`, `transitions` |
 
-Not sure which class a given `VideoType` needs? Look it up instead of
-guessing:
+Look up a class from `VideoType` directly instead of hardcoding the table:
 
 ```python
 from fraime import PROMPT_FIELDS_BY_VIDEO_TYPE, VideoType
@@ -136,12 +126,11 @@ print(rules_config.shared.fields)
 print(rules_config.types["pixar"].style_guidance)
 ```
 
-`get_models_config()` returns a typed `ModelsConfig` (`models: dict[str, ModelCatalogEntry]`,
-`video_type_capabilities: dict[str, VideoTypeCapabilityRequirement]`) built from the API's
-`GET /config/models`. `get_rules_config()` returns a typed `RulesConfig`
-(`shared: SharedPromptRules`, `types: dict[str, VideoTypeRules]`) built from
-`GET /config/rules`. Both raise the same `FraimeAuthError` /
-`FraimeAPIError` / `FraimeConnectionError` as `generate()` on failure.
+`get_models_config()` returns `ModelsConfig` (`models: dict[str, ModelCatalogEntry]`,
+`video_type_capabilities: dict[str, VideoTypeCapabilityRequirement]`).
+`get_rules_config()` returns `RulesConfig` (`shared: SharedPromptRules`,
+`types: dict[str, VideoTypeRules]`). Both raise the same `FraimeAuthError` /
+`FraimeAPIError` / `FraimeConnectionError` as `generate()`.
 
 ### Error handling
 
@@ -166,5 +155,4 @@ except FraimeConnectionError:
 | `api_key` | `FRAIME_API_KEY` | none (open API) |
 | `timeout` | — | `600.0` seconds |
 
-`timeout` defaults high on purpose — real generation runs can take several
-minutes; see [`api/README.md`](../api/README.md) for why.
+`timeout` defaults high because generation runs can take several minutes.
