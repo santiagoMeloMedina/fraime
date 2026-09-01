@@ -3,6 +3,8 @@ import os
 from fraime.model import (
     GenerateImageRequest,
     GenerateImageResponse,
+    GenerateSoundRequest,
+    GenerateSoundResponse,
     GenerateVideoRequest,
     GenerateVideoResponse,
     GenerationParams,
@@ -12,6 +14,8 @@ from fraime.model import (
     PromptFields,
     Reference,
     RulesConfig,
+    SoundGenerationParams,
+    SoundVariant,
     VideoType,
 )
 from fraime.repository import GenerationRepository
@@ -74,6 +78,25 @@ class FraimeClient:
             cpu_offload=cpu_offload,
         )
         return self._service.generate_image(request)
+
+    def generate_sound(
+        self,
+        text: str,
+        params: SoundGenerationParams,
+        variant: SoundVariant | None = None,
+        language: str | None = None,
+        voice: Reference | None = None,
+        vram_safety_margin: bool = True,
+    ) -> GenerateSoundResponse:
+        request = GenerateSoundRequest(
+            text=text,
+            params=params,
+            variant=variant,
+            language=language,
+            voice=voice,
+            vram_safety_margin=vram_safety_margin,
+        )
+        return self._service.generate_sound(request)
 
     def get_models_config(self) -> ModelsConfig:
         return self._service.get_models_config()

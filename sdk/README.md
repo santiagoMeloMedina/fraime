@@ -1,7 +1,8 @@
 # Fraime SDK
 
 Python client for the [Fraime API](../api/README.md): typed models/enums for
-building a video or image generation request, instead of hand-writing JSON.
+building a video, image, or sound generation request, instead of
+hand-writing JSON.
 
 ## Prerequisites
 
@@ -150,6 +151,54 @@ are populated instead.
 Reference images (image-to-image) work the same way as video's
 image-to-video: pass `references=[Reference(url=...)]` to `generate_image`.
 
+## Sound generation
+
+Sound has no structured `fields` the way video/image do — chatterbox's
+input is literal spoken `text`, not a compiled scene description:
+
+```python
+from fraime import FraimeClient, SoundGenerationParams
+
+client = FraimeClient(base_url="http://127.0.0.1:8000")
+
+response = client.generate_sound(
+    text="Hello from Chatterbox. This is a test of the Fraime sound generation pipeline.",
+    params=SoundGenerationParams(exaggeration=0.5, cfg_weight=0.5, temperature=0.8),
+    # variant=...  # optional: SoundVariant.BASE / .TURBO / .MULTILINGUAL; omit to auto-select
+    # language=... # optional: ISO code (e.g. "es"); only honored when the resolved variant is multilingual
+    # voice=...    # optional: Reference(url=...) to clone a voice from a 5-20s clean clip
+)
+
+print(response.sound_path, response.model)
+```
+
+`response` is a `GenerateSoundResponse` (`sound_path`, `model`, `s3_bucket`,
+`s3_key`, `s3_url`) — same S3-output behavior as video/image.
+
+Unlike video/image, `generate_sound` has no `model`/`references`/`cpu_offload`
+argument: chatterbox ships three fixed Python classes rather than arbitrary
+swappable HF repos, so `variant` (`SoundVariant.BASE` / `.TURBO` /
+`.MULTILINGUAL`) is the pin mechanism instead of `model`, and `voice` is a
+single `Reference` rather than a list, since chatterbox clones from exactly
+one reference clip.
+
+```python
+from fraime import Reference, SoundVariant
+
+response = client.generate_sound(
+    text="Hola, esto es una prueba en español.",
+    variant=SoundVariant.MULTILINGUAL,
+    language="es",
+    voice=Reference(url="https://example.com/reference-clip.wav"),
+    params=SoundGenerationParams(),
+)
+```
+
+- `base`/`turbo` are English-only and ignore `language`; only `multilingual`
+  (23 languages) honors it.
+- Every variant supports zero-shot voice cloning via `voice`; `turbo` trades
+  some expressiveness for much lower VRAM/latency.
+
 ### Inspecting the API's configuration
 
 ```python
@@ -166,16 +215,17 @@ print(rules_config.image_evaluation_criteria)      # image: evaluation criteria
 
 `get_models_config()` returns `ModelsConfig` (`models: dict[str, ModelCatalogEntry]`,
 `video_type_capabilities: dict[str, VideoTypeCapabilityRequirement]`) —
-video and image models together in one catalog, distinguished by each
-entry's `media_type` (`MediaType.VIDEO` / `MediaType.IMAGE`).
+video, image, and sound models together in one catalog, distinguished by
+each entry's `media_type` (`MediaType.VIDEO` / `.IMAGE` / `.SOUND`).
 
 `get_rules_config()` returns `RulesConfig` — video and image rules together,
 in one file on the API side: `shared`/`types` for video,
 `image_fields`/`image_evaluation_criteria` for image, plus a shared
 `criteria_schema` describing what each evaluation criterion field means.
+Sound has no equivalent — there's nothing to compile, so nothing to score.
 
 Both raise the same `FraimeAuthError` / `FraimeAPIError` / `FraimeConnectionError`
-as `generate_video()`/`generate_image()`.
+as `generate_video()`/`generate_image()`/`generate_sound()`.
 
 ### Error handling
 

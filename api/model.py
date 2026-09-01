@@ -31,11 +31,6 @@ class GenerateImageRequest(GenerateRequestBase):
 
 
 class GenerateSoundRequest(BaseModel):
-    # Doesn't inherit GenerateRequestBase: chatterbox variants are fixed Python
-    # classes (no arbitrary HF repo pin the way DiffusionPipeline.from_pretrained
-    # allows) and have no cpu_offload-style API, so `model`/`cpu_offload` don't
-    # apply here the way they do for video/image. `references` becomes a single
-    # `voice` instead, since chatterbox clones from exactly one reference clip.
     media_type: Literal[MediaType.SOUND]
     text: str = Field(description="The text to speak")
     variant: SoundVariant | None = Field(
