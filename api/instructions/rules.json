@@ -1,4 +1,5 @@
 {
+  "note": "The compiled prompt (all fields joined into one string) is sent as-is to the model's text encoder(s) — this ruleset does not check or enforce a length limit. Most catalog models use a CLIP text encoder somewhere in their pipeline, and CLIP has a hard 77-token (~50-60 word) limit: anything past that is silently truncated and never reaches the model, with no error. Models that also have a longer-context encoder (e.g. FLUX's T5-XXL) are only partially affected, since that encoder still sees the full prompt. Keep individual field values concrete and concise rather than exhaustively descriptive — density beats length.",
   "criteria_schema": {
     "name": "Unique identifier for the criterion within its scope (shared or a given type).",
     "description": "What is being checked.",
