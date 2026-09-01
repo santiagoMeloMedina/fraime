@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from fraime import AspectRatio, MediaType, VideoType
+from fraime import AspectRatio, MediaType, SoundVariant, VideoType
 
 
 class GenerateVideoInput(BaseModel):
@@ -218,6 +218,66 @@ class GenerateImageOutput(BaseModel):
     )
 
 
+class GenerateSoundInput(BaseModel):
+    """Everything needed to generate one spoken-audio clip via the Fraime API.
+
+    Unlike video/image, there's no structured prompt fields — chatterbox's input
+    is literal spoken text, not a compiled scene description.
+    """
+
+    text: str = Field(description="The text to speak")
+
+    variant: SoundVariant | None = Field(
+        default=None,
+        description=(
+            "Explicit chatterbox variant to use (base/turbo/multilingual). Omit to "
+            "auto-select by hardware and, if language requires it, multilingual capability."
+        ),
+    )
+    language: str | None = Field(
+        default=None,
+        description=(
+            "ISO language code (e.g. 'es', 'fr', 'ja'); only honored when the resolved "
+            "variant is multilingual — base/turbo are English-only and ignore this."
+        ),
+    )
+    voice_url: str | None = Field(
+        default=None,
+        description=(
+            "Publicly accessible URL to a reference audio clip (5-20s of clean, "
+            "single-speaker audio) to clone the voice from. Omit for the model's default voice."
+        ),
+    )
+
+    exaggeration: float = Field(default=0.5, ge=0, description="Emotional intensity/exaggeration of the delivery")
+    cfg_weight: float = Field(
+        default=0.5, ge=0, description="Classifier-free guidance weight; controls pacing/adherence to the reference voice"
+    )
+    temperature: float = Field(
+        default=0.8, ge=0, description="Sampling temperature; higher is more varied/expressive, lower is more monotone/stable"
+    )
+
+    vram_safety_margin: bool = Field(
+        default=True,
+        description="Match auto-selection against 85% of detected VRAM instead of 100%, for headroom against real-world usage spikes. Recommended on.",
+    )
+
+
+class GenerateSoundOutput(BaseModel):
+    sound_path: str | None = Field(
+        default=None,
+        description="Path to the generated .wav on the API server, or null if the API is configured for S3 output instead",
+    )
+    model: str = Field(description="The Hugging Face model id that actually ran")
+    s3_bucket: str | None = Field(
+        default=None, description="S3 bucket the sound file was uploaded to, if the API has S3 output configured"
+    )
+    s3_key: str | None = Field(default=None, description="S3 object key the sound file was uploaded to")
+    s3_url: str | None = Field(
+        default=None, description="Presigned GET URL for downloading the sound file directly from S3, valid for 1 hour"
+    )
+
+
 class VideoTypeInfo(BaseModel):
     video_type: VideoType
     fields_class: str = Field(description="Name of the underlying SDK PromptFields class this type uses")
@@ -227,7 +287,7 @@ class VideoTypeInfo(BaseModel):
 
 
 class ModelCatalogEntryOutput(BaseModel):
-    media_type: MediaType = Field(description="Whether this model generates video or image output")
+    media_type: MediaType = Field(description="Whether this model generates video, image, or sound output")
     id: str = Field(description="Hugging Face repo id, intended for DiffusionPipeline.from_pretrained")
     variant: str | None = Field(
         default=None, description="Checkpoint/variant label when the repo id alone doesn't disambiguate it"
@@ -256,7 +316,9 @@ class VideoTypeCapabilityRequirementOutput(BaseModel):
 
 
 class ModelsConfigOutput(BaseModel):
-    """The Fraime API's model catalog — what `generate_video` auto-selects from when `model` is omitted."""
+    """The Fraime API's model catalog — what `generate_video`/`generate_image`
+    auto-select from when `model` is omitted, and what `generate_sound`
+    auto-selects from when `variant` is omitted."""
 
     models: dict[str, ModelCatalogEntryOutput] = Field(description="Catalog models keyed by their unique model key")
     video_type_capabilities: dict[str, VideoTypeCapabilityRequirementOutput] = Field(
@@ -292,8 +354,9 @@ class VideoTypeRulesOutput(BaseModel):
 
 
 class RulesConfigOutput(BaseModel):
-    """The Fraime API's prompt structure/evaluation rules, for both video (per
-    video_type) and image (a single fixed field set)."""
+    """The Fraime API's prompt structure/evaluation rules, for video (per
+    video_type) and image (a single fixed field set). Sound has no equivalent
+    — its input is literal spoken text, so there's nothing to compile or score."""
 
     criteria_schema: dict[str, str] = Field(description="What each evaluation criterion field means")
     shared: SharedPromptRulesOutput = Field(description="Prompt rules shared by every video_type")

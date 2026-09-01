@@ -1,7 +1,7 @@
 # Fraime MCP Server
 
-MCP server exposing the [Fraime API](../api/README.md)'s video and image
-generation to agentic workflows, built on top of the
+MCP server exposing the [Fraime API](../api/README.md)'s video, image, and
+sound generation to agentic workflows, built on top of the
 [Fraime SDK](../sdk/README.md)'s `FraimeClient`.
 
 ## Prerequisites
@@ -113,27 +113,58 @@ Same S3-output behavior as `generate_video`: if `CLOUD_S3_OUTPUT_BUCKET` is
 configured, `image_path` is `null` and `s3_bucket`/`s3_key`/`s3_url` are
 populated instead; otherwise `image_path` points to the file on the API host.
 
+### `generate_sound`
+
+Generates one spoken-audio clip from raw text. Unlike `generate_video`/
+`generate_image`, there's no structured prompt — `text` is spoken as-is:
+
+- `text` — the text to speak; chunked internally at sentence boundaries and
+  stitched back together, since the underlying model silently truncates any
+  single call past roughly 30-40 seconds of audio
+- `variant` — `base`/`turbo`/`multilingual`; omit to auto-select by hardware
+  (and by multilingual capability, if `language` requires it). Every variant
+  supports zero-shot voice cloning; `turbo` trades some expressiveness for
+  much lower VRAM/latency; `multilingual` supports 23 languages instead of
+  English-only
+- `language` — ISO code (e.g. `es`, `fr`, `ja`); only honored when the
+  resolved variant is `multilingual` — `base`/`turbo` ignore it
+- `voice_url` — a reference audio clip URL (5-20s of clean, single-speaker
+  audio) to clone; omit for the model's default voice
+- Generation params: `exaggeration`, `cfg_weight`, `temperature`
+- `vram_safety_margin`
+
+Unlike `generate_video`/`generate_image`, there's no `model`/`reference_urls`/
+`cpu_offload` — chatterbox ships three fixed Python classes rather than
+arbitrary swappable HF repos, so `variant` is the pin mechanism instead of
+`model`, and `voice_url` clones from exactly one clip rather than a list.
+
+Same S3-output behavior as the other tools: if `CLOUD_S3_OUTPUT_BUCKET` is
+configured, `sound_path` is `null` and `s3_bucket`/`s3_key`/`s3_url` are
+populated instead; otherwise `sound_path` points to the file on the API host.
+
 ### `list_video_types`
 
 Returns every `video_type` and which extra fields it uses on top of the
-shared base fields. No image equivalent exists since image has a single
-fixed field set — see `get_rules_config`'s `image_fields` instead.
+shared base fields. No image or sound equivalent exists: image has a single
+fixed field set (see `get_rules_config`'s `image_fields`), and sound has no
+structured fields at all.
 
 ### `get_models_config`
 
-Returns the model catalog the API host auto-selects from when `generate_video`
-or `generate_image` is called without an explicit `model`: every model's
-`media_type` (video or image), capabilities, VRAM requirements, license, and
-`preferred_for` video types, plus the capability requirements each
-`video_type` imposes on that selection.
+Returns the model catalog the API host auto-selects from when `generate_video`,
+`generate_image`, or `generate_sound` is called without an explicit `model`/
+`variant`: every model's `media_type` (video, image, or sound), capabilities,
+VRAM requirements, license, and `preferred_for` video types, plus the
+capability requirements each `video_type` imposes on that selection.
 
 ### `get_rules_config`
 
-Returns the prompt-structure rules the API enforces, for both media types:
+Returns the prompt-structure rules the API enforces, for video and image:
 for video, field guidance and evaluation criteria shared by every
 `video_type`, plus each type's own style guidance, extra fields, and
 additional criteria; for image, the fixed field set (`image_fields`) and its
-evaluation criteria (`image_evaluation_criteria`).
+evaluation criteria (`image_evaluation_criteria`). Sound has no equivalent —
+call `generate_sound` directly, it just takes text.
 
 ## Configuration reference
 

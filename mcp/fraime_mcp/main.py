@@ -11,6 +11,7 @@ from fraime import (
     PromptFields,
     Reference,
     SocialAdPromptFields,
+    SoundGenerationParams,
     UGCPromptFields,
 )
 from fraime.exceptions import FraimeError
@@ -20,6 +21,8 @@ from mcp.server.mcpserver.exceptions import ToolError
 from fraime_mcp.model import (
     GenerateImageInput,
     GenerateImageOutput,
+    GenerateSoundInput,
+    GenerateSoundOutput,
     GenerateVideoInput,
     GenerateVideoOutput,
     ModelsConfigOutput,
@@ -29,7 +32,7 @@ from fraime_mcp.model import (
 
 server = MCPServer(
     "fraime",
-    description="Generate short AI videos and images through a self-hosted Fraime API instance.",
+    description="Generate short AI videos, images, and spoken audio through a self-hosted Fraime API instance.",
 )
 
 # FraimeClient itself already falls back to FRAIME_BASE_URL/FRAIME_API_KEY from
@@ -133,6 +136,47 @@ def generate_image(input: GenerateImageInput) -> GenerateImageOutput:
 
 
 @server.tool()
+def generate_sound(input: GenerateSoundInput) -> GenerateSoundOutput:
+    """Generate a spoken-audio clip from raw text.
+
+    Unlike generate_video/generate_image, there's no structured prompt —
+    `text` is spoken as-is. Picks a chatterbox variant automatically based on
+    the API host's detected hardware (and, if `language` requires it,
+    multilingual capability) unless `variant` is set explicitly.
+
+    Keep `text` reasonably concise: it's chunked internally at sentence
+    boundaries and stitched back together, since the underlying model
+    silently truncates any single call past roughly 30-40 seconds of audio.
+    """
+    params = SoundGenerationParams(
+        exaggeration=input.exaggeration,
+        cfg_weight=input.cfg_weight,
+        temperature=input.temperature,
+    )
+    voice = Reference(url=input.voice_url) if input.voice_url else None
+
+    try:
+        response = _client.generate_sound(
+            text=input.text,
+            params=params,
+            variant=input.variant,
+            language=input.language,
+            voice=voice,
+            vram_safety_margin=input.vram_safety_margin,
+        )
+    except FraimeError as e:
+        raise ToolError(str(e)) from e
+
+    return GenerateSoundOutput(
+        sound_path=response.sound_path,
+        model=response.model,
+        s3_bucket=response.s3_bucket,
+        s3_key=response.s3_key,
+        s3_url=response.s3_url,
+    )
+
+
+@server.tool()
 def list_video_types() -> list[VideoTypeInfo]:
     """List every supported video_type and which extra fields each one uses.
 
@@ -154,7 +198,7 @@ def list_video_types() -> list[VideoTypeInfo]:
 def get_models_config() -> ModelsConfigOutput:
     """Get the model catalog the Fraime API auto-selects from.
 
-    Covers both video and image models, distinguished by each entry's
+    Covers video, image, and sound models, distinguished by each entry's
     media_type. Lists every catalog model with its capabilities, VRAM
     requirements, license, and which video_types it's preferred for, plus
     the capability requirements each video_type imposes on that selection.
@@ -170,12 +214,13 @@ def get_models_config() -> ModelsConfigOutput:
 def get_rules_config() -> RulesConfigOutput:
     """Get the prompt-structure rules the Fraime API enforces.
 
-    Covers both media types: for video, field guidance and evaluation
+    Covers video and image: for video, field guidance and evaluation
     criteria shared by every video_type, plus each video_type's own style
     guidance, extra fields, and additional evaluation criteria; for image,
     the single fixed field set (image_fields) and its evaluation criteria
     (image_evaluation_criteria). Useful for understanding what makes a
-    prompt score well before calling generate_video or generate_image.
+    prompt score well before calling generate_video or generate_image. Sound
+    has no equivalent — call generate_sound directly, it just takes text.
     """
     try:
         config = _client.get_rules_config()
