@@ -75,72 +75,51 @@ install (Option 2). For a `pip install fraime-mcp` into your own venv, point
 
 ### `generate_video`
 
-Generates one video.
+Generates one video from shared prompt fields (`subject`, `action`, `scene`,
+`camera`, `lighting`, `style`, `negative_prompt`), video-type-specific extras
+(`dialogue`, `voice_tone`, `text_overlay`, `aspect_ratio`,
+`audio_reference`, `tempo_bpm`, `text_content`, `transitions`), generation
+params (`duration_s`, `fps`, `resolution`, `seed`, `num_inference_steps`),
+and model/performance knobs (`model`, `reference_urls`,
+`vram_safety_margin`, `low_memory_decode`, `cpu_offload`).
 
-- Shared prompt fields: `subject`, `action`, `scene`, `camera`, `lighting`,
-  `style`, `negative_prompt`
-- Video-type-specific extras: `dialogue`, `voice_tone`, `text_overlay`,
-  `aspect_ratio`, `audio_reference`, `tempo_bpm`, `text_content`,
-  `transitions`
-- Generation params: `duration_s`, `fps`, `resolution`, `seed`,
-  `num_inference_steps`
-- Model/performance knobs: `model`, `reference_urls`, `vram_safety_margin`,
-  `low_memory_decode`, `cpu_offload`
+Fields that don't apply to the chosen `video_type` are ignored.
+`audio_reference` is required for `music_video`; `text_content` is required
+for `motion_graphics`.
 
-Fields that don't apply to the chosen `video_type` are ignored. `audio_reference`
-is required for `music_video`; `text_content` is required for
-`motion_graphics` — omitting either returns a tool error.
-
-If the API has `CLOUD_S3_OUTPUT_BUCKET` configured (see
-[`api/README.md`](../api/README.md#s3-output)), the result's `video_path` is
-`null` and `s3_bucket`, `s3_key`, and a presigned `s3_url` are populated
-instead; otherwise those three are `null` and `video_path` points to the
-file on the API host.
+Result includes `video_path` and `model`; if `CLOUD_S3_OUTPUT_BUCKET` is
+configured on the API (see [`api/README.md`](../api/README.md#s3-output)),
+`video_path` is `null` and `s3_bucket`/`s3_key`/`s3_url` are populated
+instead.
 
 ### `generate_image`
 
 Generates one still image. Unlike `generate_video`, there's no per-type
-field variation — the same fixed field set covers every request:
+field variation: prompt fields (`subject`, `scene`, `camera`, `lighting`,
+`style`, `action`, `color_palette`, `negative_prompt`), generation params
+(`width`, `height`, `seed`, `num_inference_steps`, `guidance_scale`), and
+model/performance knobs (`model`, `reference_urls`, `vram_safety_margin`,
+`cpu_offload`).
 
-- Prompt fields: `subject`, `scene`, `camera`, `lighting`, `style`, `action`,
-  `color_palette`, `negative_prompt`
-- Generation params: `width`, `height`, `seed`, `num_inference_steps`,
-  `guidance_scale`
-- Model/performance knobs: `model`, `reference_urls`, `vram_safety_margin`,
-  `cpu_offload`
-
-Same S3-output behavior as `generate_video`: if `CLOUD_S3_OUTPUT_BUCKET` is
-configured, `image_path` is `null` and `s3_bucket`/`s3_key`/`s3_url` are
-populated instead; otherwise `image_path` points to the file on the API host.
+Same S3-output behavior as `generate_video`, with `image_path` in place of
+`video_path`.
 
 ### `generate_voice`
 
-Generates one spoken-audio clip from raw text. Unlike `generate_video`/
-`generate_image`, there's no structured prompt — `text` is spoken as-is:
+Generates one spoken-audio clip from raw `text` — no structured prompt.
+Chatterbox ships three fixed classes rather than arbitrary swappable HF
+repos, so `variant` (`base`/`turbo`/`multilingual`) pins one instead of
+`model`; omit it to auto-select by hardware (and by multilingual capability,
+if `language` requires it). `voice_url` clones a voice from a single 5-20s
+reference clip; `language` (ISO code) is only honored when the resolved
+variant is multilingual. Generation params: `exaggeration`, `cfg_weight`,
+`temperature`.
 
-- `text` — the text to speak; chunked internally at sentence boundaries and
-  stitched back together, since the underlying model silently truncates any
-  single call past roughly 30-40 seconds of audio
-- `variant` — `base`/`turbo`/`multilingual`; omit to auto-select by hardware
-  (and by multilingual capability, if `language` requires it). Every variant
-  supports zero-shot voice cloning; `turbo` trades some expressiveness for
-  much lower VRAM/latency; `multilingual` supports 23 languages instead of
-  English-only
-- `language` — ISO code (e.g. `es`, `fr`, `ja`); only honored when the
-  resolved variant is `multilingual` — `base`/`turbo` ignore it
-- `voice_url` — a reference audio clip URL (5-20s of clean, single-speaker
-  audio) to clone; omit for the model's default voice
-- Generation params: `exaggeration`, `cfg_weight`, `temperature`
-- `vram_safety_margin`
+Long `text` is chunked internally at sentence boundaries and stitched back
+together, since the underlying model truncates past ~30-40 seconds per call.
 
-Unlike `generate_video`/`generate_image`, there's no `model`/`reference_urls`/
-`cpu_offload` — chatterbox ships three fixed Python classes rather than
-arbitrary swappable HF repos, so `variant` is the pin mechanism instead of
-`model`, and `voice_url` clones from exactly one clip rather than a list.
-
-Same S3-output behavior as the other tools: if `CLOUD_S3_OUTPUT_BUCKET` is
-configured, `voice_path` is `null` and `s3_bucket`/`s3_key`/`s3_url` are
-populated instead; otherwise `voice_path` points to the file on the API host.
+Same S3-output behavior as the other tools, with `voice_path` in place of
+`video_path`.
 
 ### `list_video_types`
 

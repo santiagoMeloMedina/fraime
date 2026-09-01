@@ -54,17 +54,10 @@ make install
 
 This creates a `.venv` inside `api/`, installs `requirements.txt`, then
 installs `chatterbox-tts` separately with `--no-deps`
-([`scripts/install.sh`](scripts/install.sh)). That last step is load-bearing,
-not an oversight: `chatterbox-tts` hard-pins exact (`==`, not a range)
-`diffusers`/`transformers`/`torch` versions old enough to predate this
-project's video pipelines (FLUX, Wan2.1/2.2) — a normal
-`pip install chatterbox-tts` silently downgrades those and breaks video/image
-generation. `--no-deps` skips chatterbox's declared pins and keeps this
-project's newer versions; chatterbox's own real (non-conflicting)
-dependencies are already covered by `requirements.txt`. This combination is
-verified working (real inference tested), but it's an unusual install order
-worth knowing about if you're changing dependencies later — reinstalling
-`chatterbox-tts` normally will reintroduce the conflict.
+([`scripts/install.sh`](scripts/install.sh)) — `chatterbox-tts` hard-pins
+older `diffusers`/`transformers`/`torch` versions that would otherwise
+downgrade and break video/image generation. Reinstalling `chatterbox-tts`
+normally will reintroduce that conflict.
 
 ## Run
 
@@ -117,11 +110,6 @@ Apple's Metal backend, so this image falls back to CPU generation on a Mac
 regardless of the host's GPU. Use it on a Linux host with an NVIDIA GPU; on
 Mac use `make run` outside Docker instead.
 
-Verified: a real `docker build` + `docker run` (emulated `linux/amd64` on
-Apple Silicon) confirms the image builds, all three media types' imports
-succeed (including `chatterbox-tts`), the app starts as the intended non-root
-user, and `/config/models`/`/config/rules` respond correctly over real HTTP.
-
 ## Environment variables
 
 Copy `api/.env-example` to `api/.env` and configure as needed — every
@@ -133,7 +121,7 @@ setting has a sensible default if left unset.
 | `GENERATION_FPS` | `24` | Default frames per second |
 | `GENERATION_RESOLUTION` | `1024x576` | Default target resolution |
 | `GENERATION_SEED` | unset | Default seed for reproducible generation |
-| `GENERATION_MODEL_CACHE_DIR` | Hugging Face's default cache | Where downloaded video/image model weights (several to tens of GB each) are stored. **Not honored for voice** — chatterbox's `from_pretrained()` takes no cache_dir argument and always downloads to Hugging Face's own default cache regardless of this setting. |
+| `GENERATION_MODEL_CACHE_DIR` | Hugging Face's default cache | Where downloaded video/image model weights are stored. Not honored for voice — chatterbox always uses Hugging Face's default cache. |
 | `GENERATION_OUTPUT_DIR` | `.generated` | Where generated `.mp4`/`.png`/`.wav` files are written; created automatically |
 | `DETECTOR_CATALOG_PATH` | `instructions/models.json` | Path to the model catalog the detector matches against |
 | `PROMPT_RULES_PATH` | `instructions/rules.json` | Path to the prompt rules (both video and image) that `/config/rules` serves |
@@ -174,55 +162,16 @@ curl -X POST http://127.0.0.1:8000/generate \
   }'
 ```
 
-Response:
-
-```json
-{
-  "video_path": ".generated/<uuid>.mp4",
-  "model": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
-  "s3_bucket": null,
-  "s3_key": null,
-  "s3_url": null
-}
-```
+Response includes `video_path`, the `model` that ran, and (if S3 output is
+configured) `s3_bucket`/`s3_key`/`s3_url`.
 
 ### Image
 
-```bash
-curl -X POST http://127.0.0.1:8000/generate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "media_type": "image",
-    "fields": {
-      "subject": "a matte black ceramic coffee mug with a minimalist logo",
-      "scene": "a clean marble kitchen counter with soft blurred greenery in the background",
-      "camera": "close-up, straight-on angle, shallow depth of field",
-      "lighting": "controlled studio softbox lighting, warm highlight on the ceramic surface",
-      "style": "polished commercial product photography, crisp reflections",
-      "color_palette": "warm neutrals with a matte black accent",
-      "negative_prompt": "blurry, low quality, warped shape, extra objects, watermark, text overlay"
-    },
-    "params": {
-      "width": 1024,
-      "height": 1024
-    }
-  }'
-```
-
-Pass `references: [{"url": "https://..."}]` for image-to-image generation
-(edits/restyles the first reference image) instead of pure text-to-image.
-
-Response:
-
-```json
-{
-  "image_path": ".generated/<uuid>.png",
-  "model": "black-forest-labs/FLUX.1-schnell",
-  "s3_bucket": null,
-  "s3_key": null,
-  "s3_url": null
-}
-```
+Same shape, with `media_type: "image"` and image-specific `fields`
+(`subject`, `scene`, `camera`, `lighting`, `style`, `color_palette`,
+`negative_prompt`) and `params` (`width`, `height`). Pass
+`references: [{"url": "https://..."}]` for image-to-image instead of
+text-to-image. Response uses `image_path` in place of `video_path`.
 
 ### Voice
 
@@ -231,7 +180,10 @@ curl -X POST http://127.0.0.1:8000/generate \
   -H "Content-Type: application/json" \
   -d '{
     "media_type": "voice",
-    "text": "Hello from Chatterbox. This is a real end to end test of the Fraime voice generation pipeline.",
+    "text": "Hello from Chatterbox. This is a test of the Fraime voice generation pipeline.",
+    "variant": "multilingual",
+    "language": "es",
+    "voice": {"url": "https://example.com/reference-clip.wav"},
     "params": {
       "exaggeration": 0.5,
       "cfg_weight": 0.5,
@@ -240,56 +192,20 @@ curl -X POST http://127.0.0.1:8000/generate \
   }'
 ```
 
-Response:
-
-```json
-{
-  "voice_path": ".generated/<uuid>.wav",
-  "model": "ResembleAI/chatterbox-turbo",
-  "s3_bucket": null,
-  "s3_key": null,
-  "s3_url": null
-}
-```
-
 Unlike video/image, voice has no `fields`/structured prompt — `text` is
-spoken as-is (chunked internally at sentence boundaries and stitched back
-together, since chatterbox silently truncates any single call past ~30-40s
-of audio). It also has no `model` pin the way video/image do — chatterbox
-ships three fixed Python classes (`base`/`turbo`/`multilingual`), not
-arbitrary swappable HF repos, so pin one explicitly with `variant` instead:
-
-```json
-{
-  "media_type": "voice",
-  "text": "Hola, esto es una prueba en español.",
-  "variant": "multilingual",
-  "language": "es",
-  "voice": {"url": "https://example.com/reference-clip.wav"},
-  "params": {"exaggeration": 0.5, "cfg_weight": 0.5, "temperature": 0.8}
-}
-```
+spoken as-is, and there's no `model` pin: chatterbox ships three fixed
+classes (`base`/`turbo`/`multilingual`), pinned via `variant` instead.
 
 - `variant` — omit to auto-select by hardware (and by `multilingual`
-  capability, if `language` is set to anything other than `en`); every
-  variant supports zero-shot voice cloning, `turbo` trades some
-  expressiveness for much lower VRAM/latency, `multilingual` supports 23
-  languages instead of English-only.
+  capability if `language` isn't English); every variant supports zero-shot
+  voice cloning, `turbo` trades some expressiveness for much lower
+  VRAM/latency, `multilingual` covers 23 languages.
 - `language` — ISO code (e.g. `es`, `fr`, `ja`); only honored when the
-  resolved variant is `multilingual` — `base`/`turbo` ignore it (English
-  only).
+  resolved variant is `multilingual`.
 - `voice` — a single reference clip URL (5-20s clean single-speaker audio)
-  to clone; omit for the model's default voice. Unlike video/image's
-  `references` (a list), voice clones from exactly one clip.
+  to clone; omit for the model's default voice.
 
-Verified working end to end on Apple Silicon (MPS), including voice cloning,
-for all three variants. One MPS-specific fix was needed and is already
-applied: `turbo`'s reference-clip loudness normalization
-(`norm_loudness`, on by default in chatterbox) computes an intermediate
-value as `float64` via `pyloudnorm`, which MPS can't hold at all — the
-handler disables it automatically when `variant="turbo"` and the detected
-accelerator is MPS (harmless elsewhere; `base`/`multilingual` never had this
-step to begin with). CUDA/CPU hosts are unaffected either way.
+Response uses `voice_path` in place of `video_path`.
 
 If `AUTH_API_KEY` is set, add
 `-H "Authorization: Bearer <your-key>"` to any request.
@@ -307,22 +223,12 @@ When configured:
 - On success, the file is uploaded to that key,
   `video_path`/`image_path`/`voice_path` is `null`, and `s3_bucket`,
   `s3_key`, and a presigned `s3_url` (valid for 1 hour) are populated
-  instead:
-
-```json
-{
-  "video_path": null,
-  "model": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
-  "s3_bucket": "my-fraime-videos",
-  "s3_key": "outputs/.<uuid>.mp4",
-  "s3_url": "https://my-fraime-videos.s3.amazonaws.com/outputs/.<uuid>.mp4?X-Amz-..."
-}
-```
+  instead.
 
 ### Inspecting the running configuration
 
 `GET /config/models` returns the full contents of
-[`instructions/models.json`](instructions/models.json) (both media types'
+[`instructions/models.json`](instructions/models.json) (all media types'
 models together, distinguished by each entry's `media_type` field);
 `GET /config/rules` returns the full contents of
 [`instructions/rules.json`](instructions/rules.json) (both video's

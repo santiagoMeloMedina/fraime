@@ -20,18 +20,9 @@ pip install fraime-sdk
 
 ### Option 2 — from a local clone
 
-Step by step, from scratch:
-
 ```bash
-# 1. Clone the repo (skip if you already have it)
 git clone <this-repo-url>
 cd fraime
-
-# 2. (Recommended) create a virtualenv for your own project
-python3 -m venv .venv
-source .venv/bin/activate
-
-# 3. Install the SDK from the sdk/ folder
 pip install ./sdk
 #   or, for local development on the SDK itself (editable install):
 pip install -e ./sdk
@@ -64,8 +55,6 @@ response = client.generate_video(
         style="3D animated feature style, stylized proportions, warm rim lighting",
     ),
     params=GenerationParams(duration_s=3, fps=16, resolution="768x512"),
-    # model=...              # optional: pin an exact model instead of auto-selecting
-    # references=[...]       # optional: Reference(url=...) list, for image-to-video
 )
 
 print(response.video_path, response.model)
@@ -94,26 +83,11 @@ Every `video_type` has its own field set — some add fields the base six
 | `MOTION_GRAPHICS` | `MotionGraphicsPromptFields` | `text_content`, `transitions` |
 
 Look up a class from `VideoType` directly instead of hardcoding the table:
+`PROMPT_FIELDS_BY_VIDEO_TYPE[VideoType.SOCIAL_SHORT_FORM_AD]` returns
+`SocialAdPromptFields`.
 
-```python
-from fraime import PROMPT_FIELDS_BY_VIDEO_TYPE, VideoType
-
-fields_class = PROMPT_FIELDS_BY_VIDEO_TYPE[VideoType.SOCIAL_SHORT_FORM_AD]
-# -> SocialAdPromptFields
-```
-
-### Reference images (image-to-video)
-
-```python
-from fraime import Reference
-
-response = client.generate_video(
-    video_type=VideoType.UGC_PRODUCT_REVIEW,
-    fields=ugc_fields,
-    params=params,
-    references=[Reference(url="https://example.com/product-photo.jpg")],
-)
-```
+For image-to-video, pass `references=[Reference(url="https://...")]` to
+`generate_video`.
 
 ## Image generation
 
@@ -136,8 +110,6 @@ response = client.generate_image(
         negative_prompt="blurry, low quality, warped shape, extra objects, watermark, text overlay",
     ),
     params=ImageGenerationParams(width=1024, height=1024),
-    # model=...        # optional: pin an exact model instead of auto-selecting
-    # references=[...] # optional: Reference(url=...) list, for image-to-image
 )
 
 print(response.image_path, response.model)
@@ -164,9 +136,9 @@ client = FraimeClient(base_url="http://127.0.0.1:8000")
 response = client.generate_voice(
     text="Hello from Chatterbox. This is a test of the Fraime voice generation pipeline.",
     params=VoiceGenerationParams(exaggeration=0.5, cfg_weight=0.5, temperature=0.8),
-    # variant=...  # optional: VoiceVariant.BASE / .TURBO / .MULTILINGUAL; omit to auto-select
-    # language=... # optional: ISO code (e.g. "es"); only honored when the resolved variant is multilingual
-    # voice=...    # optional: Reference(url=...) to clone a voice from a 5-20s clean clip
+    variant=None,      # VoiceVariant.BASE / .TURBO / .MULTILINGUAL; omit to auto-select
+    language=None,     # ISO code, e.g. "es"; only honored when the resolved variant is multilingual
+    voice=None,        # Reference(url=...) to clone a voice from a 5-20s clean clip
 )
 
 print(response.voice_path, response.model)
@@ -176,23 +148,9 @@ print(response.voice_path, response.model)
 `s3_key`, `s3_url`) — same S3-output behavior as video/image.
 
 Unlike video/image, `generate_voice` has no `model`/`references`/`cpu_offload`
-argument: chatterbox ships three fixed Python classes rather than arbitrary
-swappable HF repos, so `variant` (`VoiceVariant.BASE` / `.TURBO` /
-`.MULTILINGUAL`) is the pin mechanism instead of `model`, and `voice` is a
-single `Reference` rather than a list, since chatterbox clones from exactly
-one reference clip.
-
-```python
-from fraime import Reference, VoiceVariant
-
-response = client.generate_voice(
-    text="Hola, esto es una prueba en español.",
-    variant=VoiceVariant.MULTILINGUAL,
-    language="es",
-    voice=Reference(url="https://example.com/reference-clip.wav"),
-    params=VoiceGenerationParams(),
-)
-```
+argument: chatterbox ships three fixed classes rather than arbitrary
+swappable HF repos, so `variant` is the pin mechanism instead of `model`, and
+`voice` is a single `Reference` rather than a list.
 
 - `base`/`turbo` are English-only and ignore `language`; only `multilingual`
   (23 languages) honors it.
@@ -207,10 +165,8 @@ for key, entry in models_config.models.items():
     print(key, entry.media_type, entry.id, entry.capabilities, entry.min_vram_gb)
 
 rules_config = client.get_rules_config()
-print(rules_config.shared.fields)               # video: shared fields
-print(rules_config.types["pixar"].style_guidance)  # video: per-type rules
-print(rules_config.image_fields)                  # image: fixed field set
-print(rules_config.image_evaluation_criteria)      # image: evaluation criteria
+print(rules_config.shared.fields, rules_config.types["pixar"].style_guidance)
+print(rules_config.image_fields, rules_config.image_evaluation_criteria)
 ```
 
 `get_models_config()` returns `ModelsConfig` (`models: dict[str, ModelCatalogEntry]`,

@@ -67,24 +67,12 @@ feasibility, and all required fields being non-empty). Each criterion has:
 - **`remediation`** — the concrete fix to try when the criterion fails,
   phrased as a field update rather than just a description of the problem.
 
-Some recurring blocking checks worth calling out explicitly:
-
-- **`dialogue_duration_fit`** — spoken word count, at ~2.5 words/second,
-  must fit the requested clip duration. Applies to every dialogue-bearing
-  type.
-- **`caption_length_fit` / `text_length_fit`** — on-screen text character
-  count, at ~15 readable characters/second, must fit the clip duration.
-  Applies to `social_short_form_ad` and `motion_graphics`.
-- **`audio_reference_present`** — `music_video` cannot be evaluated at all
-  without a reference track to sync to.
-- **`aspect_ratio_valid`** — `social_short_form_ad` must use a known
-  vertical short-form ratio (`9:16`, `4:5`).
-
-This ruleset is the data contract a future prompt evaluator/improver will
-read against: given a video type and a compiled prompt, it resolves that
-type's criteria, scores or blocks the prompt accordingly, and applies each
-failing criterion's `remediation` until the prompt clears an acceptable
-threshold.
+A few recurring blocking checks: `dialogue_duration_fit` (spoken word count
+must fit the clip duration, ~2.5 words/second), `caption_length_fit` /
+`text_length_fit` (on-screen text must fit the duration, ~15 chars/second,
+for `social_short_form_ad`/`motion_graphics`), `audio_reference_present`
+(`music_video` needs a reference track), and `aspect_ratio_valid`
+(`social_short_form_ad` must use `9:16` or `4:5`).
 
 ## Image
 
@@ -113,10 +101,3 @@ lighting/scene consistency, color-palette consistency (when set), negative-promp
 coverage, static-action plausibility (when `action` is set), and all required
 fields being non-empty. Same `check_type`/`severity`/`weight`/`remediation`
 shape as video's criteria (see above).
-
-This ruleset is the data contract a future prompt evaluator/improver will
-read against for image requests, the same way `rules.json`'s video keys
-serve that role for video: given a compiled prompt, resolve
-`image_evaluation_criteria`, score or block the prompt accordingly, and
-apply each failing criterion's `remediation` until it clears an acceptable
-threshold.
