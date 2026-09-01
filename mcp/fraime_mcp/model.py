@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from fraime import AspectRatio, MediaType, SoundVariant, VideoType
+from fraime import AspectRatio, MediaType, VideoType, VoiceVariant
 
 
 class GenerateVideoInput(BaseModel):
@@ -218,7 +218,7 @@ class GenerateImageOutput(BaseModel):
     )
 
 
-class GenerateSoundInput(BaseModel):
+class GenerateVoiceInput(BaseModel):
     """Everything needed to generate one spoken-audio clip via the Fraime API.
 
     Unlike video/image, there's no structured prompt fields — chatterbox's input
@@ -227,7 +227,7 @@ class GenerateSoundInput(BaseModel):
 
     text: str = Field(description="The text to speak")
 
-    variant: SoundVariant | None = Field(
+    variant: VoiceVariant | None = Field(
         default=None,
         description=(
             "Explicit chatterbox variant to use (base/turbo/multilingual). Omit to "
@@ -263,18 +263,18 @@ class GenerateSoundInput(BaseModel):
     )
 
 
-class GenerateSoundOutput(BaseModel):
-    sound_path: str | None = Field(
+class GenerateVoiceOutput(BaseModel):
+    voice_path: str | None = Field(
         default=None,
         description="Path to the generated .wav on the API server, or null if the API is configured for S3 output instead",
     )
     model: str = Field(description="The Hugging Face model id that actually ran")
     s3_bucket: str | None = Field(
-        default=None, description="S3 bucket the sound file was uploaded to, if the API has S3 output configured"
+        default=None, description="S3 bucket the voice file was uploaded to, if the API has S3 output configured"
     )
-    s3_key: str | None = Field(default=None, description="S3 object key the sound file was uploaded to")
+    s3_key: str | None = Field(default=None, description="S3 object key the voice file was uploaded to")
     s3_url: str | None = Field(
-        default=None, description="Presigned GET URL for downloading the sound file directly from S3, valid for 1 hour"
+        default=None, description="Presigned GET URL for downloading the voice file directly from S3, valid for 1 hour"
     )
 
 
@@ -287,7 +287,7 @@ class VideoTypeInfo(BaseModel):
 
 
 class ModelCatalogEntryOutput(BaseModel):
-    media_type: MediaType = Field(description="Whether this model generates video, image, or sound output")
+    media_type: MediaType = Field(description="Whether this model generates video, image, or voice output")
     id: str = Field(description="Hugging Face repo id, intended for DiffusionPipeline.from_pretrained")
     variant: str | None = Field(
         default=None, description="Checkpoint/variant label when the repo id alone doesn't disambiguate it"
@@ -317,7 +317,7 @@ class VideoTypeCapabilityRequirementOutput(BaseModel):
 
 class ModelsConfigOutput(BaseModel):
     """The Fraime API's model catalog — what `generate_video`/`generate_image`
-    auto-select from when `model` is omitted, and what `generate_sound`
+    auto-select from when `model` is omitted, and what `generate_voice`
     auto-selects from when `variant` is omitted."""
 
     models: dict[str, ModelCatalogEntryOutput] = Field(description="Catalog models keyed by their unique model key")
@@ -355,7 +355,7 @@ class VideoTypeRulesOutput(BaseModel):
 
 class RulesConfigOutput(BaseModel):
     """The Fraime API's prompt structure/evaluation rules, for video (per
-    video_type) and image (a single fixed field set). Sound has no equivalent
+    video_type) and image (a single fixed field set). Voice has no equivalent
     — its input is literal spoken text, so there's nothing to compile or score."""
 
     criteria_schema: dict[str, str] = Field(description="What each evaluation criterion field means")

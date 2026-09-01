@@ -11,12 +11,9 @@ from huggingface_hub import snapshot_download
 from api.config import environment
 from api.detector import detect_hardware
 from api.generation.model import Reference
-from api.generation.sound.model import SoundGenerationParams, SoundVariant
+from api.generation.voice.model import VoiceGenerationParams, VoiceVariant
 from api.utils.progress import make_progress_reporter
 
-# chatterbox's generate() caps out at max_new_tokens=1000 speech tokens per call
-# (~30-40s of audio) and silently truncates anything past that instead of
-# erroring, so longer text has to be split into chunks and stitched back together.
 MAX_CHUNK_CHARS = 300
 
 
@@ -35,10 +32,10 @@ def _chunk_text(text: str, max_chars: int = MAX_CHUNK_CHARS) -> list[str]:
     return chunks
 
 
-class SoundGeneratorHandler:
+class VoiceGeneratorHandler:
     def __init__(
         self,
-        variant: SoundVariant,
+        variant: VoiceVariant,
         model_id: str,
         on_progress: Callable[[float], None] | None = None,
     ):
@@ -47,9 +44,9 @@ class SoundGeneratorHandler:
         from chatterbox.tts_turbo import ChatterboxTurboTTS
 
         variant_classes = {
-            SoundVariant.BASE: ChatterboxTTS,
-            SoundVariant.TURBO: ChatterboxTurboTTS,
-            SoundVariant.MULTILINGUAL: ChatterboxMultilingualTTS,
+            VoiceVariant.BASE: ChatterboxTTS,
+            VoiceVariant.TURBO: ChatterboxTurboTTS,
+            VoiceVariant.MULTILINGUAL: ChatterboxMultilingualTTS,
         }
 
         self.variant = variant
@@ -68,7 +65,7 @@ class SoundGeneratorHandler:
     def generate(
         self,
         text: str,
-        params: SoundGenerationParams,
+        params: VoiceGenerationParams,
         language: str | None = None,
         voice: Reference | None = None,
     ) -> tuple[torch.Tensor, int]:
@@ -94,7 +91,7 @@ class SoundGeneratorHandler:
     def _generate_chunk(
         self,
         chunk: str,
-        params: SoundGenerationParams,
+        params: VoiceGenerationParams,
         language: str | None,
         audio_prompt_path: str | None,
     ) -> torch.Tensor:
@@ -104,9 +101,9 @@ class SoundGeneratorHandler:
             "cfg_weight": params.cfg_weight,
             "temperature": params.temperature,
         }
-        if self.variant == SoundVariant.MULTILINGUAL:
+        if self.variant == VoiceVariant.MULTILINGUAL:
             kwargs["language_id"] = language or "en"
-        if self.variant == SoundVariant.TURBO and self.device == "mps":
+        if self.variant == VoiceVariant.TURBO and self.device == "mps":
             kwargs["norm_loudness"] = False
         return self.model.generate(chunk, **kwargs)
 

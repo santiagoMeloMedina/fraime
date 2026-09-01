@@ -4,4 +4,4 @@ from enum import Enum
 class MediaType(str, Enum):
     VIDEO = "video"
     IMAGE = "image"
-    SOUND = "sound"
+    VOICE = "voice"

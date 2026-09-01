@@ -1,10 +1,10 @@
 from fraime.model import (
     GenerateImageRequest,
     GenerateImageResponse,
-    GenerateSoundRequest,
-    GenerateSoundResponse,
     GenerateVideoRequest,
     GenerateVideoResponse,
+    GenerateVoiceRequest,
+    GenerateVoiceResponse,
     ModelsConfig,
     RulesConfig,
 )
@@ -29,11 +29,11 @@ class GenerationService:
         raw = self._repository.post_generate(payload)
         return GenerateImageResponse.model_validate(raw)
 
-    def generate_sound(self, request: GenerateSoundRequest) -> GenerateSoundResponse:
+    def generate_voice(self, request: GenerateVoiceRequest) -> GenerateVoiceResponse:
         payload = request.model_dump(mode="json", exclude_none=True)
 
         raw = self._repository.post_generate(payload)
-        return GenerateSoundResponse.model_validate(raw)
+        return GenerateVoiceResponse.model_validate(raw)
 
     def get_models_config(self) -> ModelsConfig:
         raw = self._repository.get_models_config()

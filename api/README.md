@@ -1,20 +1,20 @@
 # Fraime API
 
-Video, image, and sound generation engine + model detection engine for
+Video, image, and voice generation engine + model detection engine for
 Fraime. Detects your hardware, picks the best open source model it can
-actually run, and generates video, image, or sound output from a prompt.
+actually run, and generates video, image, or voice output from a prompt.
 
 ## Features
 
 - **`POST /generate`** — works with any `diffusers`-compatible Hugging Face
-  model for video/image, and with chatterbox TTS for sound. Set `media_type`
-  to `"video"`, `"image"`, or `"sound"` to pick the request shape and
+  model for video/image, and with chatterbox TTS for voice. Set `media_type`
+  to `"video"`, `"image"`, or `"voice"` to pick the request shape and
   generation handler; pass `model` (video/image) to pin an exact HF repo id,
-  or `variant` (sound — `base`/`turbo`/`multilingual`, a fixed set of
+  or `variant` (voice — `base`/`turbo`/`multilingual`, a fixed set of
   chatterbox classes, not an arbitrary repo) to pin one; omit either to
   auto-select by hardware. Tunable per request: duration/fps/resolution
   (video), width/height (image), or exaggeration/cfg_weight/temperature
-  (sound), seed (video/image), CPU offload/VAE tiling (video/image), VRAM
+  (voice), seed (video/image), CPU offload/VAE tiling (video/image), VRAM
   safety margin.
 - **Model catalog** — [`instructions/models.json`](instructions/models.json)
   (media type, capabilities, VRAM requirements, license, style strengths),
@@ -28,7 +28,7 @@ actually run, and generates video, image, or sound output from a prompt.
   scored against evaluation criteria in the same
   [`instructions/rules.json`](instructions/rules.json) — video under
   `shared`/`types`, image under `image_fields`/`image_evaluation_criteria` —
-  editable with `define`. Sound takes `text` directly (no structured
+  editable with `define`. Voice takes `text` directly (no structured
   fields/rules — chatterbox's input is literal spoken text, not a compiled
   scene description).
 - **Hardware detector** — reads accelerator (CUDA/MPS/CPU), VRAM, system RAM,
@@ -133,7 +133,7 @@ setting has a sensible default if left unset.
 | `GENERATION_FPS` | `24` | Default frames per second |
 | `GENERATION_RESOLUTION` | `1024x576` | Default target resolution |
 | `GENERATION_SEED` | unset | Default seed for reproducible generation |
-| `GENERATION_MODEL_CACHE_DIR` | Hugging Face's default cache | Where downloaded video/image model weights (several to tens of GB each) are stored. **Not honored for sound** — chatterbox's `from_pretrained()` takes no cache_dir argument and always downloads to Hugging Face's own default cache regardless of this setting. |
+| `GENERATION_MODEL_CACHE_DIR` | Hugging Face's default cache | Where downloaded video/image model weights (several to tens of GB each) are stored. **Not honored for voice** — chatterbox's `from_pretrained()` takes no cache_dir argument and always downloads to Hugging Face's own default cache regardless of this setting. |
 | `GENERATION_OUTPUT_DIR` | `.generated` | Where generated `.mp4`/`.png`/`.wav` files are written; created automatically |
 | `DETECTOR_CATALOG_PATH` | `instructions/models.json` | Path to the model catalog the detector matches against |
 | `PROMPT_RULES_PATH` | `instructions/rules.json` | Path to the prompt rules (both video and image) that `/config/rules` serves |
@@ -143,11 +143,11 @@ setting has a sensible default if left unset.
 
 ## Using the API
 
-Once running, `POST /generate` with `media_type` set to `"video"` or
-`"image"` — this picks which request shape is expected and which handler
-generates the output. `model` is optional in both — omit it to let the
-hardware detector pick automatically among catalog models of that media
-type.
+Once running, `POST /generate` with `media_type` set to `"video"`,
+`"image"`, or `"voice"` — this picks which request shape is expected and
+which handler generates the output. `model` (video/image) or `variant`
+(voice) is optional — omit it to let the hardware detector pick
+automatically among catalog models of that media type.
 
 ### Video
 
@@ -224,14 +224,14 @@ Response:
 }
 ```
 
-### Sound
+### Voice
 
 ```bash
 curl -X POST http://127.0.0.1:8000/generate \
   -H "Content-Type: application/json" \
   -d '{
-    "media_type": "sound",
-    "text": "Hello from Chatterbox. This is a real end to end test of the Fraime sound generation pipeline.",
+    "media_type": "voice",
+    "text": "Hello from Chatterbox. This is a real end to end test of the Fraime voice generation pipeline.",
     "params": {
       "exaggeration": 0.5,
       "cfg_weight": 0.5,
@@ -244,7 +244,7 @@ Response:
 
 ```json
 {
-  "sound_path": ".generated/<uuid>.wav",
+  "voice_path": ".generated/<uuid>.wav",
   "model": "ResembleAI/chatterbox-turbo",
   "s3_bucket": null,
   "s3_key": null,
@@ -252,7 +252,7 @@ Response:
 }
 ```
 
-Unlike video/image, sound has no `fields`/structured prompt — `text` is
+Unlike video/image, voice has no `fields`/structured prompt — `text` is
 spoken as-is (chunked internally at sentence boundaries and stitched back
 together, since chatterbox silently truncates any single call past ~30-40s
 of audio). It also has no `model` pin the way video/image do — chatterbox
@@ -261,7 +261,7 @@ arbitrary swappable HF repos, so pin one explicitly with `variant` instead:
 
 ```json
 {
-  "media_type": "sound",
+  "media_type": "voice",
   "text": "Hola, esto es una prueba en español.",
   "variant": "multilingual",
   "language": "es",
@@ -280,7 +280,7 @@ arbitrary swappable HF repos, so pin one explicitly with `variant` instead:
   only).
 - `voice` — a single reference clip URL (5-20s clean single-speaker audio)
   to clone; omit for the model's default voice. Unlike video/image's
-  `references` (a list), sound clones from exactly one clip.
+  `references` (a list), voice clones from exactly one clip.
 
 Verified working end to end on Apple Silicon (MPS), including voice cloning,
 for all three variants. One MPS-specific fix was needed and is already
@@ -305,7 +305,7 @@ When configured:
 - Before generation starts, the API does a test write to the destination
   key; failure returns **403 Forbidden** immediately.
 - On success, the file is uploaded to that key,
-  `video_path`/`image_path`/`sound_path` is `null`, and `s3_bucket`,
+  `video_path`/`image_path`/`voice_path` is `null`, and `s3_bucket`,
   `s3_key`, and a presigned `s3_url` (valid for 1 hour) are populated
   instead:
 

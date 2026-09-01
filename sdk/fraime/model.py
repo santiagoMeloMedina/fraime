@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, HttpUrl
 class MediaType(str, Enum):
     VIDEO = "video"
     IMAGE = "image"
-    SOUND = "sound"
+    VOICE = "voice"
 
 
 class VideoType(str, Enum):
@@ -64,7 +64,7 @@ class ImageGenerationParams(BaseModel):
     )
 
 
-class SoundVariant(str, Enum):
+class VoiceVariant(str, Enum):
     """Which chatterbox class the API loads — a fixed set of Python classes, not
     an arbitrary swappable HF repo id the way video/image models are."""
 
@@ -73,7 +73,7 @@ class SoundVariant(str, Enum):
     MULTILINGUAL = "multilingual"
 
 
-class SoundGenerationParams(BaseModel):
+class VoiceGenerationParams(BaseModel):
     exaggeration: float = Field(default=0.5, ge=0, description="Emotional intensity/exaggeration of the delivery")
     cfg_weight: float = Field(
         default=0.5, ge=0, description="Classifier-free guidance weight; controls pacing/adherence to the reference voice"
@@ -215,10 +215,10 @@ class GenerateImageRequest(BaseModel):
     )
 
 
-class GenerateSoundRequest(BaseModel):
-    media_type: Literal[MediaType.SOUND] = MediaType.SOUND
+class GenerateVoiceRequest(BaseModel):
+    media_type: Literal[MediaType.VOICE] = MediaType.VOICE
     text: str = Field(description="The text to speak")
-    variant: SoundVariant | None = Field(
+    variant: VoiceVariant | None = Field(
         default=None,
         description="Explicit variant to use; omit to auto-select by hardware and, if language requires it, multilingual capability",
     )
@@ -230,7 +230,7 @@ class GenerateSoundRequest(BaseModel):
         default=None,
         description="Reference audio clip URL to clone the voice from (5-20s of clean, single-speaker audio); omit for the model's default voice",
     )
-    params: SoundGenerationParams
+    params: VoiceGenerationParams
     vram_safety_margin: bool = Field(
         default=True, description="Match against 85% of detected VRAM instead of 100%, for headroom"
     )
@@ -356,16 +356,16 @@ class GenerateImageResponse(BaseModel):
     )
 
 
-class GenerateSoundResponse(BaseModel):
-    sound_path: str | None = Field(
+class GenerateVoiceResponse(BaseModel):
+    voice_path: str | None = Field(
         default=None,
         description="Path to the generated .wav on the API server, or null if the API is configured for S3 output instead",
     )
     model: str = Field(description="Hugging Face model id that actually ran")
     s3_bucket: str | None = Field(
-        default=None, description="S3 bucket the sound file was uploaded to, if the API has S3 output configured"
+        default=None, description="S3 bucket the voice file was uploaded to, if the API has S3 output configured"
     )
-    s3_key: str | None = Field(default=None, description="S3 object key the sound file was uploaded to")
+    s3_key: str | None = Field(default=None, description="S3 object key the voice file was uploaded to")
     s3_url: str | None = Field(
-        default=None, description="Presigned GET URL for downloading the sound file directly from S3, valid for 1 hour"
+        default=None, description="Presigned GET URL for downloading the voice file directly from S3, valid for 1 hour"
     )

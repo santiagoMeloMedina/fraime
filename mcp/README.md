@@ -1,7 +1,7 @@
 # Fraime MCP Server
 
 MCP server exposing the [Fraime API](../api/README.md)'s video, image, and
-sound generation to agentic workflows, built on top of the
+voice generation to agentic workflows, built on top of the
 [Fraime SDK](../sdk/README.md)'s `FraimeClient`.
 
 ## Prerequisites
@@ -113,7 +113,7 @@ Same S3-output behavior as `generate_video`: if `CLOUD_S3_OUTPUT_BUCKET` is
 configured, `image_path` is `null` and `s3_bucket`/`s3_key`/`s3_url` are
 populated instead; otherwise `image_path` points to the file on the API host.
 
-### `generate_sound`
+### `generate_voice`
 
 Generates one spoken-audio clip from raw text. Unlike `generate_video`/
 `generate_image`, there's no structured prompt — `text` is spoken as-is:
@@ -139,21 +139,21 @@ arbitrary swappable HF repos, so `variant` is the pin mechanism instead of
 `model`, and `voice_url` clones from exactly one clip rather than a list.
 
 Same S3-output behavior as the other tools: if `CLOUD_S3_OUTPUT_BUCKET` is
-configured, `sound_path` is `null` and `s3_bucket`/`s3_key`/`s3_url` are
-populated instead; otherwise `sound_path` points to the file on the API host.
+configured, `voice_path` is `null` and `s3_bucket`/`s3_key`/`s3_url` are
+populated instead; otherwise `voice_path` points to the file on the API host.
 
 ### `list_video_types`
 
 Returns every `video_type` and which extra fields it uses on top of the
-shared base fields. No image or sound equivalent exists: image has a single
-fixed field set (see `get_rules_config`'s `image_fields`), and sound has no
+shared base fields. No image or voice equivalent exists: image has a single
+fixed field set (see `get_rules_config`'s `image_fields`), and voice has no
 structured fields at all.
 
 ### `get_models_config`
 
 Returns the model catalog the API host auto-selects from when `generate_video`,
-`generate_image`, or `generate_sound` is called without an explicit `model`/
-`variant`: every model's `media_type` (video, image, or sound), capabilities,
+`generate_image`, or `generate_voice` is called without an explicit `model`/
+`variant`: every model's `media_type` (video, image, or voice), capabilities,
 VRAM requirements, license, and `preferred_for` video types, plus the
 capability requirements each `video_type` imposes on that selection.
 
@@ -163,8 +163,8 @@ Returns the prompt-structure rules the API enforces, for video and image:
 for video, field guidance and evaluation criteria shared by every
 `video_type`, plus each type's own style guidance, extra fields, and
 additional criteria; for image, the fixed field set (`image_fields`) and its
-evaluation criteria (`image_evaluation_criteria`). Sound has no equivalent —
-call `generate_sound` directly, it just takes text.
+evaluation criteria (`image_evaluation_criteria`). Voice has no equivalent —
+call `generate_voice` directly, it just takes text.
 
 ## Configuration reference
 

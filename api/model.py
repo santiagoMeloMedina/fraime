@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from api.generation.image.model import ImageGenerationParams
 from api.generation.media_type import MediaType
 from api.generation.model import GenerationParams, Reference
-from api.generation.sound.model import SoundGenerationParams, SoundVariant
+from api.generation.voice.model import VoiceGenerationParams, VoiceVariant
 
 
 class GenerateRequestBase(BaseModel):
@@ -30,10 +30,10 @@ class GenerateImageRequest(GenerateRequestBase):
     params: ImageGenerationParams
 
 
-class GenerateSoundRequest(BaseModel):
-    media_type: Literal[MediaType.SOUND]
+class GenerateVoiceRequest(BaseModel):
+    media_type: Literal[MediaType.VOICE]
     text: str = Field(description="The text to speak")
-    variant: SoundVariant | None = Field(
+    variant: VoiceVariant | None = Field(
         default=None,
         description="Explicit variant to use; omit to auto-select by hardware and, if language requires it, multilingual capability",
     )
@@ -45,14 +45,14 @@ class GenerateSoundRequest(BaseModel):
         default=None,
         description="Reference audio clip URL to clone the voice from (5-20s of clean, single-speaker audio); omit for the model's default voice",
     )
-    params: SoundGenerationParams
+    params: VoiceGenerationParams
     vram_safety_margin: bool = Field(
         default=True, description="Match against 85% of detected VRAM instead of 100%, for headroom"
     )
 
 
 GenerateRequest = Annotated[
-    Union[GenerateVideoRequest, GenerateImageRequest, GenerateSoundRequest],
+    Union[GenerateVideoRequest, GenerateImageRequest, GenerateVoiceRequest],
     Field(discriminator="media_type"),
 ]
 
@@ -76,8 +76,8 @@ class GenerateImageResult:
 
 
 @dataclass
-class GenerateSoundResult:
-    sound_path: str | None
+class GenerateVoiceResult:
+    voice_path: str | None
     model: str
     s3_bucket: str | None = None
     s3_key: str | None = None

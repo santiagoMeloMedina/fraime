@@ -1,7 +1,7 @@
 # Fraime SDK
 
 Python client for the [Fraime API](../api/README.md): typed models/enums for
-building a video, image, or sound generation request, instead of
+building a video, image, or voice generation request, instead of
 hand-writing JSON.
 
 ## Prerequisites
@@ -151,46 +151,46 @@ are populated instead.
 Reference images (image-to-image) work the same way as video's
 image-to-video: pass `references=[Reference(url=...)]` to `generate_image`.
 
-## Sound generation
+## Voice generation
 
-Sound has no structured `fields` the way video/image do — chatterbox's
+Voice has no structured `fields` the way video/image do — chatterbox's
 input is literal spoken `text`, not a compiled scene description:
 
 ```python
-from fraime import FraimeClient, SoundGenerationParams
+from fraime import FraimeClient, VoiceGenerationParams
 
 client = FraimeClient(base_url="http://127.0.0.1:8000")
 
-response = client.generate_sound(
-    text="Hello from Chatterbox. This is a test of the Fraime sound generation pipeline.",
-    params=SoundGenerationParams(exaggeration=0.5, cfg_weight=0.5, temperature=0.8),
-    # variant=...  # optional: SoundVariant.BASE / .TURBO / .MULTILINGUAL; omit to auto-select
+response = client.generate_voice(
+    text="Hello from Chatterbox. This is a test of the Fraime voice generation pipeline.",
+    params=VoiceGenerationParams(exaggeration=0.5, cfg_weight=0.5, temperature=0.8),
+    # variant=...  # optional: VoiceVariant.BASE / .TURBO / .MULTILINGUAL; omit to auto-select
     # language=... # optional: ISO code (e.g. "es"); only honored when the resolved variant is multilingual
     # voice=...    # optional: Reference(url=...) to clone a voice from a 5-20s clean clip
 )
 
-print(response.sound_path, response.model)
+print(response.voice_path, response.model)
 ```
 
-`response` is a `GenerateSoundResponse` (`sound_path`, `model`, `s3_bucket`,
+`response` is a `GenerateVoiceResponse` (`voice_path`, `model`, `s3_bucket`,
 `s3_key`, `s3_url`) — same S3-output behavior as video/image.
 
-Unlike video/image, `generate_sound` has no `model`/`references`/`cpu_offload`
+Unlike video/image, `generate_voice` has no `model`/`references`/`cpu_offload`
 argument: chatterbox ships three fixed Python classes rather than arbitrary
-swappable HF repos, so `variant` (`SoundVariant.BASE` / `.TURBO` /
+swappable HF repos, so `variant` (`VoiceVariant.BASE` / `.TURBO` /
 `.MULTILINGUAL`) is the pin mechanism instead of `model`, and `voice` is a
 single `Reference` rather than a list, since chatterbox clones from exactly
 one reference clip.
 
 ```python
-from fraime import Reference, SoundVariant
+from fraime import Reference, VoiceVariant
 
-response = client.generate_sound(
+response = client.generate_voice(
     text="Hola, esto es una prueba en español.",
-    variant=SoundVariant.MULTILINGUAL,
+    variant=VoiceVariant.MULTILINGUAL,
     language="es",
     voice=Reference(url="https://example.com/reference-clip.wav"),
-    params=SoundGenerationParams(),
+    params=VoiceGenerationParams(),
 )
 ```
 
@@ -215,17 +215,17 @@ print(rules_config.image_evaluation_criteria)      # image: evaluation criteria
 
 `get_models_config()` returns `ModelsConfig` (`models: dict[str, ModelCatalogEntry]`,
 `video_type_capabilities: dict[str, VideoTypeCapabilityRequirement]`) —
-video, image, and sound models together in one catalog, distinguished by
-each entry's `media_type` (`MediaType.VIDEO` / `.IMAGE` / `.SOUND`).
+video, image, and voice models together in one catalog, distinguished by
+each entry's `media_type` (`MediaType.VIDEO` / `.IMAGE` / `.VOICE`).
 
 `get_rules_config()` returns `RulesConfig` — video and image rules together,
 in one file on the API side: `shared`/`types` for video,
 `image_fields`/`image_evaluation_criteria` for image, plus a shared
 `criteria_schema` describing what each evaluation criterion field means.
-Sound has no equivalent — there's nothing to compile, so nothing to score.
+Voice has no equivalent — there's nothing to compile, so nothing to score.
 
 Both raise the same `FraimeAuthError` / `FraimeAPIError` / `FraimeConnectionError`
-as `generate_video()`/`generate_image()`/`generate_sound()`.
+as `generate_video()`/`generate_image()`/`generate_voice()`.
 
 ### Error handling
 

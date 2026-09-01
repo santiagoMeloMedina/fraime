@@ -7,19 +7,19 @@
     "entry": {
       "media_type": {
         "type": "enum",
-        "choices": ["video", "image", "sound"],
+        "choices": ["video", "image", "voice"],
         "required": true,
-        "description": "Whether this model generates video, image, or sound output; determines which generation handler and default capabilities apply"
+        "description": "Whether this model generates video, image, or voice output; determines which generation handler and default capabilities apply"
       },
       "id": {
         "type": "string",
         "required": true,
-        "description": "Hugging Face repo id. For video/image, intended for DiffusionPipeline.from_pretrained. For sound (chatterbox), documents which repo the variant loads internally but isn't itself passed to any loader call — `variant` is the actual class-selection key, and two sound entries can share the same id."
+        "description": "Hugging Face repo id. For video/image, intended for DiffusionPipeline.from_pretrained. For voice (chatterbox), documents which repo the variant loads internally but isn't itself passed to any loader call — `variant` is the actual class-selection key, and two voice entries can share the same id."
       },
       "variant": {
         "type": "string",
         "required": false,
-        "description": "Checkpoint/variant label when the repo id alone doesn't disambiguate it. Required in practice for sound entries (base/turbo/multilingual), since it's the key that selects which chatterbox class to instantiate."
+        "description": "Checkpoint/variant label when the repo id alone doesn't disambiguate it. Required in practice for voice entries (base/turbo/multilingual), since it's the key that selects which chatterbox class to instantiate."
       },
       "org": {
         "type": "string",

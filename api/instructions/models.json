@@ -1,5 +1,5 @@
 {
-  "note": "Curated catalog of open source video, image, and sound generation models, restricted to unconditionally free licenses only (Apache-2.0/MIT, no custom \"community license\", no MAU/revenue thresholds, no academic-only caveats). Verified via web search Aug 2026. Model ids are Hugging Face repo ids intended for DiffusionPipeline.from_pretrained (video), AutoPipelineForText2Image/AutoPipelineForImage2Image.from_pretrained (image), or chatterbox's own <Variant>.from_pretrained(device) (sound — id documents which HF repo that variant loads, but isn't passed as an argument; `variant` is the actual class-selection key). Every entry's `media_type` (\"video\", \"image\", or \"sound\") determines which handler and default capabilities apply. VRAM figures are sourced from model cards/community benchmarks and vary with resolution/frame count/offloading; treat as approximate. Deliberately excluded despite being otherwise capable: ByteDance Waver 1.0 (not open-weight at all), MiniMax-H3 (license bars local deployment in the US/EU/UK/South Korea), AnimateDiff (README says \"academic use\" despite an Apache-2.0 tag), LTX-Video/LTX-2.5 (LTX Community License: free only under $10M revenue, bars training competing AI systems, bars competing products), CogVideoX-5B (CogVideoX License: requires commercial registration, capped at 1M visits/month), HunyuanVideo-1.5 (Tencent Community License: free only under 100M MAU).",
+  "note": "Curated catalog of open source video, image, and voice generation models, restricted to unconditionally free licenses only (Apache-2.0/MIT, no custom \"community license\", no MAU/revenue thresholds, no academic-only caveats). Verified via web search Aug 2026. Model ids are Hugging Face repo ids intended for DiffusionPipeline.from_pretrained (video), AutoPipelineForText2Image/AutoPipelineForImage2Image.from_pretrained (image), or chatterbox's own <Variant>.from_pretrained(device) (voice — id documents which HF repo that variant loads, but isn't passed as an argument; `variant` is the actual class-selection key). Every entry's `media_type` (\"video\", \"image\", or \"voice\") determines which handler and default capabilities apply. VRAM figures are sourced from model cards/community benchmarks and vary with resolution/frame count/offloading; treat as approximate. Deliberately excluded despite being otherwise capable: ByteDance Waver 1.0 (not open-weight at all), MiniMax-H3 (license bars local deployment in the US/EU/UK/South Korea), AnimateDiff (README says \"academic use\" despite an Apache-2.0 tag), LTX-Video/LTX-2.5 (LTX Community License: free only under $10M revenue, bars training competing AI systems, bars competing products), CogVideoX-5B (CogVideoX License: requires commercial registration, capped at 1M visits/month), HunyuanVideo-1.5 (Tencent Community License: free only under 100M MAU).",
   "models": {
     "magi_1_distilled": {
       "media_type": "video",
@@ -111,7 +111,7 @@
       "notes": "Distilled/pruned SDXL: ~50% fewer parameters and ~60% faster than base SDXL while staying pipeline-compatible (SDXL-architecture LoRAs and the standard img2img pipeline apply). Runs well on 8GB VRAM — usable down to 4-6GB at a significant speed cost, not treated as a separate tier here. The lightest model in this catalog; picked over flux_1_schnell on constrained hardware."
     },
     "chatterbox_base": {
-      "media_type": "sound",
+      "media_type": "voice",
       "id": "ResembleAI/chatterbox",
       "variant": "base",
       "org": "Resemble AI",
@@ -122,7 +122,7 @@
       "notes": "Zero-shot voice cloning from a short (5-20s) reference clip via audio_prompt_path — every variant supports this, not a separate capability. English only. Community figures for VRAM range 8-16GB depending on generation length; 8GB used here as the conservative floor."
     },
     "chatterbox_turbo": {
-      "media_type": "sound",
+      "media_type": "voice",
       "id": "ResembleAI/chatterbox-turbo",
       "variant": "turbo",
       "org": "Resemble AI",
@@ -133,7 +133,7 @@
       "notes": "Distilled for low-latency voice agents: single-step speech-token-to-mel decoding (vs. base's 10 steps), ~1GB VRAM at FP16. Same zero-shot voice cloning as base, trades some fidelity/expressiveness for speed. English only."
     },
     "chatterbox_multilingual": {
-      "media_type": "sound",
+      "media_type": "voice",
       "id": "ResembleAI/chatterbox",
       "variant": "multilingual",
       "org": "Resemble AI",
