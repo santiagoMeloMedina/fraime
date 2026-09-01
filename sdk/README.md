@@ -1,7 +1,7 @@
 # Fraime SDK
 
 Python client for the [Fraime API](../api/README.md): typed models/enums for
-building a generation request, instead of hand-writing JSON.
+building a video or image generation request, instead of hand-writing JSON.
 
 ## Prerequisites
 
@@ -52,7 +52,7 @@ client = FraimeClient(
     api_key="your-api-key",             # or set FRAIME_API_KEY instead; omit both if the API has none configured
 )
 
-response = client.generate(
+response = client.generate_video(
     video_type=VideoType.PIXAR,
     fields=CinematicPromptFields(
         subject="a small orange fox with oversized ears",
@@ -106,7 +106,7 @@ fields_class = PROMPT_FIELDS_BY_VIDEO_TYPE[VideoType.SOCIAL_SHORT_FORM_AD]
 ```python
 from fraime import Reference
 
-response = client.generate(
+response = client.generate_video(
     video_type=VideoType.UGC_PRODUCT_REVIEW,
     fields=ugc_fields,
     params=params,
@@ -114,23 +114,68 @@ response = client.generate(
 )
 ```
 
+## Image generation
+
+Unlike video, there's no per-type variation — `ImagePromptFields` is a
+single fixed field set for every image request:
+
+```python
+from fraime import FraimeClient, ImagePromptFields, ImageGenerationParams
+
+client = FraimeClient(base_url="http://127.0.0.1:8000")
+
+response = client.generate_image(
+    fields=ImagePromptFields(
+        subject="a matte black ceramic coffee mug with a minimalist logo",
+        scene="a clean marble kitchen counter with soft blurred greenery in the background",
+        camera="close-up, straight-on angle, shallow depth of field",
+        lighting="controlled studio softbox lighting, warm highlight on the ceramic surface",
+        style="polished commercial product photography, crisp reflections",
+        color_palette="warm neutrals with a matte black accent",
+        negative_prompt="blurry, low quality, warped shape, extra objects, watermark, text overlay",
+    ),
+    params=ImageGenerationParams(width=1024, height=1024),
+    # model=...        # optional: pin an exact model instead of auto-selecting
+    # references=[...] # optional: Reference(url=...) list, for image-to-image
+)
+
+print(response.image_path, response.model)
+```
+
+`response` is a `GenerateImageResponse` (`image_path`, `model`, `s3_bucket`,
+`s3_key`, `s3_url`) — same S3-output behavior as video: if the API has
+`CLOUD_S3_OUTPUT_BUCKET` configured, `image_path` is `None` and the S3 fields
+are populated instead.
+
+Reference images (image-to-image) work the same way as video's
+image-to-video: pass `references=[Reference(url=...)]` to `generate_image`.
+
 ### Inspecting the API's configuration
 
 ```python
 models_config = client.get_models_config()
 for key, entry in models_config.models.items():
-    print(key, entry.id, entry.capabilities, entry.min_vram_gb)
+    print(key, entry.media_type, entry.id, entry.capabilities, entry.min_vram_gb)
 
 rules_config = client.get_rules_config()
-print(rules_config.shared.fields)
-print(rules_config.types["pixar"].style_guidance)
+print(rules_config.shared.fields)               # video: shared fields
+print(rules_config.types["pixar"].style_guidance)  # video: per-type rules
+print(rules_config.image_fields)                  # image: fixed field set
+print(rules_config.image_evaluation_criteria)      # image: evaluation criteria
 ```
 
 `get_models_config()` returns `ModelsConfig` (`models: dict[str, ModelCatalogEntry]`,
-`video_type_capabilities: dict[str, VideoTypeCapabilityRequirement]`).
-`get_rules_config()` returns `RulesConfig` (`shared: SharedPromptRules`,
-`types: dict[str, VideoTypeRules]`). Both raise the same `FraimeAuthError` /
-`FraimeAPIError` / `FraimeConnectionError` as `generate()`.
+`video_type_capabilities: dict[str, VideoTypeCapabilityRequirement]`) —
+video and image models together in one catalog, distinguished by each
+entry's `media_type` (`MediaType.VIDEO` / `MediaType.IMAGE`).
+
+`get_rules_config()` returns `RulesConfig` — video and image rules together,
+in one file on the API side: `shared`/`types` for video,
+`image_fields`/`image_evaluation_criteria` for image, plus a shared
+`criteria_schema` describing what each evaluation criterion field means.
+
+Both raise the same `FraimeAuthError` / `FraimeAPIError` / `FraimeConnectionError`
+as `generate_video()`/`generate_image()`.
 
 ### Error handling
 
@@ -138,7 +183,7 @@ print(rules_config.types["pixar"].style_guidance)
 from fraime import FraimeAuthError, FraimeAPIError, FraimeConnectionError
 
 try:
-    response = client.generate(video_type=VideoType.PIXAR, fields=fields, params=params)
+    response = client.generate_video(video_type=VideoType.PIXAR, fields=fields, params=params)
 except FraimeAuthError:
     ...  # missing/invalid API key
 except FraimeAPIError as e:

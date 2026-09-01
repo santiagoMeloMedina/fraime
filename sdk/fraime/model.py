@@ -1,7 +1,13 @@
 from abc import ABC
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, Field, HttpUrl
+
+
+class MediaType(str, Enum):
+    VIDEO = "video"
+    IMAGE = "image"
 
 
 class VideoType(str, Enum):
@@ -38,6 +44,22 @@ class GenerationParams(BaseModel):
         default=None,
         gt=0,
         description="Denoising steps; lower is faster/lower quality. Defaults to the model's own default (usually 50) when unset.",
+    )
+
+
+class ImageGenerationParams(BaseModel):
+    width: int = Field(gt=0, description="Target image width in pixels")
+    height: int = Field(gt=0, description="Target image height in pixels")
+    seed: int | None = Field(default=None, description="Seed for reproducible generation")
+    num_inference_steps: int | None = Field(
+        default=None,
+        gt=0,
+        description="Denoising steps; lower is faster/lower quality. Defaults to the model's own default when unset.",
+    )
+    guidance_scale: float | None = Field(
+        default=None,
+        ge=0,
+        description="Classifier-free guidance scale; defaults to the model's own default when unset.",
     )
 
 
@@ -116,7 +138,25 @@ PROMPT_FIELDS_BY_VIDEO_TYPE: dict[VideoType, type[PromptFields]] = {
 }
 
 
+class ImagePromptFields(BaseModel):
+    """Fields for an image generation request — a single fixed set, unlike video's
+    per-video_type variants, since an image prompt doesn't structurally vary the way
+    dialogue-driven/music-synced/motion-graphics video types do."""
+
+    subject: str = Field(description="Main focus of the image: who/what")
+    scene: str = Field(description="Environment, background, setting, time of day")
+    camera: str = Field(description="Shot type, angle, and framing")
+    lighting: str = Field(description="Lighting style, direction, and mood")
+    style: str = Field(description="Visual/artistic style or medium reference")
+    action: str | None = Field(
+        default=None, description="Pose or momentary action, if not purely static"
+    )
+    color_palette: str | None = Field(default=None, description="Dominant tones or color scheme")
+    negative_prompt: str | None = Field(default=None, description="What to avoid in the generation")
+
+
 class GenerateVideoRequest(BaseModel):
+    media_type: Literal[MediaType.VIDEO] = MediaType.VIDEO
     video_type: VideoType
     fields: PromptFields
     params: GenerationParams
@@ -137,9 +177,28 @@ class GenerateVideoRequest(BaseModel):
     )
 
 
+class GenerateImageRequest(BaseModel):
+    media_type: Literal[MediaType.IMAGE] = MediaType.IMAGE
+    fields: ImagePromptFields
+    params: ImageGenerationParams
+    model: str | None = Field(
+        default=None, description="Explicit Hugging Face model id; omit to auto-select by hardware"
+    )
+    references: list[Reference] | None = Field(
+        default=None, description="A reference image; presence requires image-to-image capability"
+    )
+    vram_safety_margin: bool = Field(
+        default=True, description="Match against 85% of detected VRAM instead of 100%, for headroom"
+    )
+    cpu_offload: bool = Field(
+        default=True, description="Move pipeline components between CPU and accelerator instead of holding all at once"
+    )
+
+
 class ModelCatalogEntry(BaseModel):
     """One entry from the API's model catalog (`GET /config/models`)."""
 
+    media_type: MediaType = Field(description="Whether this model generates video or image output")
     id: str = Field(description="Hugging Face repo id, intended for DiffusionPipeline.from_pretrained")
     variant: str | None = Field(
         default=None, description="Checkpoint/variant label when the repo id alone doesn't disambiguate it"
@@ -170,7 +229,8 @@ class VideoTypeCapabilityRequirement(BaseModel):
 
 
 class ModelsConfig(BaseModel):
-    """The API's model catalog, as returned by `GET /config/models`."""
+    """The API's model catalog, as returned by `GET /config/models` — video and
+    image models together, distinguished by each entry's `media_type`."""
 
     models: dict[str, ModelCatalogEntry] = Field(description="Catalog models keyed by their unique model key")
     video_type_capabilities: dict[str, VideoTypeCapabilityRequirement] = Field(
@@ -212,10 +272,17 @@ class VideoTypeRules(BaseModel):
 
 
 class RulesConfig(BaseModel):
-    """The API's prompt rules, as returned by `GET /config/rules`."""
+    """The API's prompt rules, as returned by `GET /config/rules` — video and image
+    rules together, in one file on the API side (video under `shared`/`types`,
+    image under `image_fields`/`image_evaluation_criteria`)."""
 
+    criteria_schema: dict[str, str] = Field(description="What each evaluation criterion field means")
     shared: SharedPromptRules = Field(description="Prompt rules shared by every video_type")
     types: dict[str, VideoTypeRules] = Field(description="Prompt rules specific to each video_type")
+    image_fields: dict[str, str] = Field(description="Guidance text for each image prompt field")
+    image_evaluation_criteria: list[EvaluationCriterion] = Field(
+        description="Criteria applied to every image generation prompt"
+    )
 
 
 class GenerateVideoResponse(BaseModel):
@@ -230,4 +297,19 @@ class GenerateVideoResponse(BaseModel):
     s3_key: str | None = Field(default=None, description="S3 object key the video was uploaded to")
     s3_url: str | None = Field(
         default=None, description="Presigned GET URL for downloading the video directly from S3, valid for 1 hour"
+    )
+
+
+class GenerateImageResponse(BaseModel):
+    image_path: str | None = Field(
+        default=None,
+        description="Path to the generated .png on the API server, or null if the API is configured for S3 output instead",
+    )
+    model: str = Field(description="Hugging Face model id that actually ran")
+    s3_bucket: str | None = Field(
+        default=None, description="S3 bucket the image was uploaded to, if the API has S3 output configured"
+    )
+    s3_key: str | None = Field(default=None, description="S3 object key the image was uploaded to")
+    s3_url: str | None = Field(
+        default=None, description="Presigned GET URL for downloading the image directly from S3, valid for 1 hour"
     )
