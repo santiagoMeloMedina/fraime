@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fraime — Open source AI media generation platform</title>
-<meta name="description" content="Fraime detects your hardware and picks the best open source video model it can actually run — no token-metered paywall, no manual model wrangling.">
+<meta name="description" content="Fraime detects your hardware and picks the best open source video, image, or voice model it can actually run — no token-metered paywall, no manual model wrangling.">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-B2HHJTED89"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
@@ -244,7 +244,7 @@ footer{border-top:1px solid var(--line-soft);padding:44px 0;font-size:14.5px;col
     <div class="eyebrow"><span class="dot"></span>Open source AI media generation platform</div>
     <h1>Media generation without <b>the paywall or the guesswork.</b></h1>
     <p class="lede">
-      AI video today is either hidden behind a paywall that gets more expensive the more you use
+      AI media generation today is either hidden behind a paywall that gets more expensive the more you use
       it, or "free" in name only — the open models exist, but running one yourself means figuring
       out which model fits your hardware and wiring up the whole pipeline by hand.
       <strong>Fraime detects your hardware and picks the best open model it can actually run.</strong>
@@ -265,8 +265,8 @@ footer{border-top:1px solid var(--line-soft);padding:44px 0;font-size:14.5px;col
   <div class="center"><div class="eyebrow">The problem</div></div>
   <h2 class="sec-title">The gap isn't a lack of capable open models.</h2>
   <p class="sec-sub">
-    It's the friction and hardware guesswork standing between you and using them. Video creation
-    without AI is still a slow, manual process — and "free" open source models still take a
+    It's the friction and hardware guesswork standing between you and using them. Creating video,
+    image, or voice content without AI is still a slow, manual process — and "free" open source models still take a
     systems engineer to actually run.
   </p>
 
@@ -317,8 +317,8 @@ footer{border-top:1px solid var(--line-soft);padding:44px 0;font-size:14.5px;col
     And nobody should have to pay a token-metered paywall for something their own hardware can
     already do. Fraime's bet is that automatically matching hardware to the right model — instead
     of making a human do that matching by hand — is what actually makes self-hosted AI media
-    generation practical, not just theoretically free. Video is the first medium supported, with
-    more planned.
+    generation practical, not just theoretically free. Video, image, and voice are supported today,
+    with more media planned.
   </p>
 </div></section>
 
@@ -467,7 +467,7 @@ curl -X POST http://127.0.0.1:8000/generate \
       <h3>Agentic access, over MCP</h3>
       <p class="desc">An MCP server exposing the API to agentic workflows, built directly on the SDK.</p>
       <ul>
-        <li><code>generate_video</code> — every API param, with rich field descriptions</li>
+        <li><code>generate_video</code>, <code>generate_image</code>, <code>generate_voice</code> — every API param, with rich field descriptions</li>
         <li><code>list_video_types</code>, <code>get_models_config</code>, <code>get_rules_config</code> — introspect before generating</li>
         <li>Works with Claude Code, Claude Desktop, or anything that speaks MCP over stdio</li>
       </ul>
@@ -527,7 +527,7 @@ curl -X POST http://127.0.0.1:8000/generate \
 
 <footer><div class="wrap foot-in">
   <span>Fraime — Open source AI media generation platform</span>
-  <span>MIT licensed · Video today, more media planned</span>
+  <span>MIT licensed · Video, image, and voice today, more media planned</span>
 </div></footer>
 
 <script>
