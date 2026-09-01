@@ -1,23 +1,27 @@
 # Fraime API
 
-Video generation engine + model detection engine for Fraime. Detects your
-hardware, picks the best open source video model it can actually run, and
-generates video from a structured prompt.
+Video and image generation engine + model detection engine for Fraime.
+Detects your hardware, picks the best open source model it can actually run,
+and generates video or image output from a prompt.
 
 ## Features
 
 - **`POST /generate`** — works with any `diffusers`-compatible Hugging Face
-  model. Pass `model` to pin one, or omit it for auto-selection. Tunable per
-  request: duration, fps, resolution, seed, denoising steps, CPU offload,
-  VAE tiling, VRAM safety margin.
+  model, for either media type. Set `media_type` to `"video"` or `"image"` to
+  pick the request shape and generation handler; pass `model` to pin one, or
+  omit it for auto-selection within that media type. Tunable per request:
+  duration/fps/resolution (video) or width/height (image), seed, denoising
+  steps, CPU offload, VAE tiling, VRAM safety margin.
 - **Model catalog** — [`instructions/models.json`](instructions/models.json)
-  (capabilities, VRAM requirements, license, style strengths), editable with
-  the `define` tool.
-- **Prompt rules per video type** —
-  [`instructions/rules.json`](instructions/rules.json) defines fields, style
-  guidance, and evaluation criteria per video type (`pixar`, `action`,
-  `ugc_product_review`, `commercial_product_ad`, ...), also editable with
-  `define`.
+  (media type, capabilities, VRAM requirements, license, style strengths),
+  editable with the `define` tool.
+- **Structured prompts** — both media types take `fields` (subject, scene,
+  camera, lighting, style, ...) instead of a raw prompt string, compiled
+  server-side into the actual model prompt. Video fields are per-video-type
+  (`pixar`, `action`, `ugc_product_review`, `commercial_product_ad`, ...),
+  documented in [`instructions/rules.json`](instructions/rules.json) and
+  editable with `define`; image fields are a single fixed set (see
+  [`generation/prompt/image/model.py`](generation/prompt/image/model.py)).
 - **Hardware detector** — reads accelerator (CUDA/MPS/CPU), VRAM, system RAM,
   and disk space, and matches those exact figures against each catalog
   model's requirements.
@@ -109,14 +113,19 @@ setting has a sensible default if left unset.
 
 ## Using the API
 
-Once running, `POST /generate` with a video type, prompt fields, and
-generation params. `model` is optional — omit it to let the hardware
-detector pick automatically.
+Once running, `POST /generate` with `media_type` set to `"video"` or
+`"image"` — this picks which request shape is expected and which handler
+generates the output. `model` is optional in both — omit it to let the
+hardware detector pick automatically among catalog models of that media
+type.
+
+### Video
 
 ```bash
 curl -X POST http://127.0.0.1:8000/generate \
   -H "Content-Type: application/json" \
   -d '{
+    "media_type": "video",
     "video_type": "commercial_product_ad",
     "fields": {
       "subject": "a matte black ceramic coffee mug with a minimalist logo",
@@ -135,9 +144,6 @@ curl -X POST http://127.0.0.1:8000/generate \
   }'
 ```
 
-If `AUTH_API_KEY` is set, add
-`-H "Authorization: Bearer <your-key>"` to the request.
-
 Response:
 
 ```json
@@ -150,19 +156,60 @@ Response:
 }
 ```
 
+### Image
+
+```bash
+curl -X POST http://127.0.0.1:8000/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "media_type": "image",
+    "fields": {
+      "subject": "a matte black ceramic coffee mug with a minimalist logo",
+      "scene": "a clean marble kitchen counter with soft blurred greenery in the background",
+      "camera": "close-up, straight-on angle, shallow depth of field",
+      "lighting": "controlled studio softbox lighting, warm highlight on the ceramic surface",
+      "style": "polished commercial product photography, crisp reflections",
+      "color_palette": "warm neutrals with a matte black accent",
+      "negative_prompt": "blurry, low quality, warped shape, extra objects, watermark, text overlay"
+    },
+    "params": {
+      "width": 1024,
+      "height": 1024
+    }
+  }'
+```
+
+Pass `references: [{"url": "https://..."}]` for image-to-image generation
+(edits/restyles the first reference image) instead of pure text-to-image.
+
+Response:
+
+```json
+{
+  "image_path": ".generated/<uuid>.png",
+  "model": "black-forest-labs/FLUX.1-schnell",
+  "s3_bucket": null,
+  "s3_key": null,
+  "s3_url": null
+}
+```
+
+If `AUTH_API_KEY` is set, add
+`-H "Authorization: Bearer <your-key>"` to either request.
+
 ### S3 output
 
-Set `CLOUD_S3_OUTPUT_BUCKET` to upload the generated video to S3 instead of
-the host. `CLOUD_S3_OUTPUT_PREFIX` is optional (default: bucket root).
-Credentials resolve the standard boto3 way (environment,
+Set `CLOUD_S3_OUTPUT_BUCKET` to upload the generated video or image to S3
+instead of the host. `CLOUD_S3_OUTPUT_PREFIX` is optional (default: bucket
+root). Credentials resolve the standard boto3 way (environment,
 `~/.aws/credentials`, instance role, etc.).
 
 When configured:
 - Before generation starts, the API does a test write to the destination
   key; failure returns **403 Forbidden** immediately.
-- On success, the video is uploaded to that key, `video_path` is `null`, and
-  `s3_bucket`, `s3_key`, and a presigned `s3_url` (valid for 1 hour) are
-  populated instead:
+- On success, the file is uploaded to that key, `video_path`/`image_path` is
+  `null`, and `s3_bucket`, `s3_key`, and a presigned `s3_url` (valid for 1
+  hour) are populated instead:
 
 ```json
 {

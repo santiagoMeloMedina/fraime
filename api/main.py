@@ -4,14 +4,23 @@ from api.auth import require_api_key
 from api.config import app
 from api.detector.catalog import load_catalog
 from api.generation.prompt.rules import load_rules
-from api.service import GenerateVideoRequest, generate_video
+from api.model import GenerateImageResult, GenerateRequest
+from api.service import generate_media
 
 __all__ = ["app"]
 
 
 @app.post("/generate", dependencies=[Depends(require_api_key)])
-def generate(request: GenerateVideoRequest) -> dict:
-    result = generate_video(request)
+def generate(request: GenerateRequest) -> dict:
+    result = generate_media(request)
+    if isinstance(result, GenerateImageResult):
+        return {
+            "image_path": result.image_path,
+            "model": result.model,
+            "s3_bucket": result.s3_bucket,
+            "s3_key": result.s3_key,
+            "s3_url": result.s3_url,
+        }
     return {
         "video_path": result.video_path,
         "model": result.model,

@@ -5,6 +5,12 @@
   "key_prompt": "Unique model key (e.g. 'wan2.2_ti2v_5b')",
   "schemas": {
     "entry": {
+      "media_type": {
+        "type": "enum",
+        "choices": ["video", "image"],
+        "required": true,
+        "description": "Whether this model generates video or image output; determines which generation handler and default capabilities apply"
+      },
       "id": {
         "type": "string",
         "required": true,
@@ -49,7 +55,7 @@
       "capabilities": {
         "type": "list",
         "item_type": "enum",
-        "choices": ["text-to-video", "image-to-video", "audio", "audio-sync"],
+        "choices": ["text-to-video", "image-to-video", "text-to-image", "image-to-image", "audio", "audio-sync"],
         "required": true,
         "description": "Generation capabilities this model supports"
       },
