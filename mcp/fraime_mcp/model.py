@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from fraime import AspectRatio, VideoType
+from fraime import AspectRatio, MediaType, VideoType
 
 
 class GenerateVideoInput(BaseModel):
@@ -136,6 +136,88 @@ class GenerateVideoOutput(BaseModel):
     )
 
 
+class GenerateImageInput(BaseModel):
+    """Everything needed to generate one image via the Fraime API.
+
+    Unlike video, there's no per-type variation — this fixed field set covers
+    every image generation request.
+    """
+
+    subject: str = Field(
+        description="Main focus of the image: who/what, concrete and visually groundable — avoid vague adjectives"
+    )
+    scene: str = Field(
+        description="Environment, background, and time of day, specific enough to anchor lighting/mood"
+    )
+    camera: str = Field(
+        description="Shot type, angle, and framing; must be physically compatible with what the subject/scene can show"
+    )
+    lighting: str = Field(
+        description="Lighting style, direction, and mood; must not contradict the scene's implied conditions"
+    )
+    style: str = Field(
+        description="A concrete visual/artistic style or medium reference — never a vague quality adjective like 'high quality'"
+    )
+    action: str | None = Field(
+        default=None,
+        description="The subject's pose or momentary action, as a single plausible instant — omit for a purely static subject",
+    )
+    color_palette: str | None = Field(
+        default=None, description="Dominant tones/color scheme; must not contradict lighting or scene"
+    )
+    negative_prompt: str | None = Field(
+        default=None, description="Concrete failure modes to avoid, not generic boilerplate"
+    )
+
+    # Generation parameters.
+    width: int = Field(gt=0, description="Target image width in pixels")
+    height: int = Field(gt=0, description="Target image height in pixels")
+    seed: int | None = Field(default=None, description="Seed for reproducible generation")
+    num_inference_steps: int | None = Field(
+        default=None,
+        gt=0,
+        description="Denoising steps; lower is faster/lower quality. Omit to use the model's own default.",
+    )
+    guidance_scale: float | None = Field(
+        default=None, ge=0, description="Classifier-free guidance scale. Omit to use the model's own default."
+    )
+
+    # Model selection / real image conditioning / performance knobs.
+    model: str | None = Field(
+        default=None, description="Explicit Hugging Face model id to use. Omit to auto-select the best model the API's hardware can run."
+    )
+    reference_urls: list[str] | None = Field(
+        default=None,
+        description=(
+            "Publicly accessible image URLs for real image-to-image conditioning. Presence "
+            "requires image-to-image capability on whichever model gets used."
+        ),
+    )
+    vram_safety_margin: bool = Field(
+        default=True,
+        description="Match auto-selection against 85% of detected VRAM instead of 100%, for headroom against real-world usage spikes. Recommended on.",
+    )
+    cpu_offload: bool = Field(
+        default=True,
+        description="Move pipeline components between CPU and the accelerator instead of holding all of them resident at once — trades speed for headroom. Recommended on unless the host has VRAM to spare.",
+    )
+
+
+class GenerateImageOutput(BaseModel):
+    image_path: str | None = Field(
+        default=None,
+        description="Path to the generated .png on the API server, or null if the API is configured for S3 output instead",
+    )
+    model: str = Field(description="The Hugging Face model id that actually ran")
+    s3_bucket: str | None = Field(
+        default=None, description="S3 bucket the image was uploaded to, if the API has S3 output configured"
+    )
+    s3_key: str | None = Field(default=None, description="S3 object key the image was uploaded to")
+    s3_url: str | None = Field(
+        default=None, description="Presigned GET URL for downloading the image directly from S3, valid for 1 hour"
+    )
+
+
 class VideoTypeInfo(BaseModel):
     video_type: VideoType
     fields_class: str = Field(description="Name of the underlying SDK PromptFields class this type uses")
@@ -145,6 +227,7 @@ class VideoTypeInfo(BaseModel):
 
 
 class ModelCatalogEntryOutput(BaseModel):
+    media_type: MediaType = Field(description="Whether this model generates video or image output")
     id: str = Field(description="Hugging Face repo id, intended for DiffusionPipeline.from_pretrained")
     variant: str | None = Field(
         default=None, description="Checkpoint/variant label when the repo id alone doesn't disambiguate it"
@@ -209,7 +292,13 @@ class VideoTypeRulesOutput(BaseModel):
 
 
 class RulesConfigOutput(BaseModel):
-    """The Fraime API's prompt structure/evaluation rules, per video_type."""
+    """The Fraime API's prompt structure/evaluation rules, for both video (per
+    video_type) and image (a single fixed field set)."""
 
+    criteria_schema: dict[str, str] = Field(description="What each evaluation criterion field means")
     shared: SharedPromptRulesOutput = Field(description="Prompt rules shared by every video_type")
     types: dict[str, VideoTypeRulesOutput] = Field(description="Prompt rules specific to each video_type")
+    image_fields: dict[str, str] = Field(description="Guidance text for each image prompt field")
+    image_evaluation_criteria: list[EvaluationCriterionOutput] = Field(
+        description="Criteria applied to every image generation prompt"
+    )

@@ -3,6 +3,8 @@ from fraime import (
     CinematicPromptFields,
     FraimeClient,
     GenerationParams,
+    ImageGenerationParams,
+    ImagePromptFields,
     MotionGraphicsPromptFields,
     MusicVideoPromptFields,
     PresenterPromptFields,
@@ -16,6 +18,8 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
 from fraime_mcp.model import (
+    GenerateImageInput,
+    GenerateImageOutput,
     GenerateVideoInput,
     GenerateVideoOutput,
     ModelsConfigOutput,
@@ -25,7 +29,7 @@ from fraime_mcp.model import (
 
 server = MCPServer(
     "fraime",
-    description="Generate short AI videos through a self-hosted Fraime API instance.",
+    description="Generate short AI videos and images through a self-hosted Fraime API instance.",
 )
 
 # FraimeClient itself already falls back to FRAIME_BASE_URL/FRAIME_API_KEY from
@@ -54,7 +58,7 @@ def generate_video(input: GenerateVideoInput) -> GenerateVideoOutput:
     references = [Reference(url=u) for u in input.reference_urls] if input.reference_urls else None
 
     try:
-        response = _client.generate(
+        response = _client.generate_video(
             video_type=input.video_type,
             fields=fields,
             params=params,
@@ -72,6 +76,55 @@ def generate_video(input: GenerateVideoInput) -> GenerateVideoOutput:
 
     return GenerateVideoOutput(
         video_path=response.video_path,
+        model=response.model,
+        s3_bucket=response.s3_bucket,
+        s3_key=response.s3_key,
+        s3_url=response.s3_url,
+    )
+
+
+@server.tool()
+def generate_image(input: GenerateImageInput) -> GenerateImageOutput:
+    """Generate a still AI image from a structured prompt.
+
+    Unlike generate_video, there's no per-type field variation — the same
+    fixed field set covers every image request. Picks a model automatically
+    based on the API host's detected hardware unless `model` is set
+    explicitly.
+    """
+    fields = ImagePromptFields(
+        subject=input.subject,
+        scene=input.scene,
+        camera=input.camera,
+        lighting=input.lighting,
+        style=input.style,
+        action=input.action,
+        color_palette=input.color_palette,
+        negative_prompt=input.negative_prompt,
+    )
+    params = ImageGenerationParams(
+        width=input.width,
+        height=input.height,
+        seed=input.seed,
+        num_inference_steps=input.num_inference_steps,
+        guidance_scale=input.guidance_scale,
+    )
+    references = [Reference(url=u) for u in input.reference_urls] if input.reference_urls else None
+
+    try:
+        response = _client.generate_image(
+            fields=fields,
+            params=params,
+            model=input.model,
+            references=references,
+            vram_safety_margin=input.vram_safety_margin,
+            cpu_offload=input.cpu_offload,
+        )
+    except FraimeError as e:
+        raise ToolError(str(e)) from e
+
+    return GenerateImageOutput(
+        image_path=response.image_path,
         model=response.model,
         s3_bucket=response.s3_bucket,
         s3_key=response.s3_key,
@@ -101,9 +154,10 @@ def list_video_types() -> list[VideoTypeInfo]:
 def get_models_config() -> ModelsConfigOutput:
     """Get the model catalog the Fraime API auto-selects from.
 
-    Lists every catalog model with its capabilities, VRAM requirements,
-    license, and which video_types it's preferred for, plus the capability
-    requirements each video_type imposes on that selection.
+    Covers both video and image models, distinguished by each entry's
+    media_type. Lists every catalog model with its capabilities, VRAM
+    requirements, license, and which video_types it's preferred for, plus
+    the capability requirements each video_type imposes on that selection.
     """
     try:
         config = _client.get_models_config()
@@ -114,12 +168,14 @@ def get_models_config() -> ModelsConfigOutput:
 
 @server.tool()
 def get_rules_config() -> RulesConfigOutput:
-    """Get the prompt-structure rules the Fraime API enforces per video_type.
+    """Get the prompt-structure rules the Fraime API enforces.
 
-    Includes the field guidance and evaluation criteria shared by every
-    video_type, plus each video_type's own style guidance, extra fields, and
-    additional evaluation criteria. Useful for understanding what makes a
-    prompt score well before calling generate_video.
+    Covers both media types: for video, field guidance and evaluation
+    criteria shared by every video_type, plus each video_type's own style
+    guidance, extra fields, and additional evaluation criteria; for image,
+    the single fixed field set (image_fields) and its evaluation criteria
+    (image_evaluation_criteria). Useful for understanding what makes a
+    prompt score well before calling generate_video or generate_image.
     """
     try:
         config = _client.get_rules_config()

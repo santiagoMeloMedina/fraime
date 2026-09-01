@@ -1,7 +1,8 @@
 # Fraime MCP Server
 
-MCP server exposing the [Fraime API](../api/README.md) to agentic workflows,
-built on top of the [Fraime SDK](../sdk/README.md)'s `FraimeClient`.
+MCP server exposing the [Fraime API](../api/README.md)'s video and image
+generation to agentic workflows, built on top of the
+[Fraime SDK](../sdk/README.md)'s `FraimeClient`.
 
 ## Prerequisites
 
@@ -96,23 +97,43 @@ If the API has `CLOUD_S3_OUTPUT_BUCKET` configured (see
 instead; otherwise those three are `null` and `video_path` points to the
 file on the API host.
 
+### `generate_image`
+
+Generates one still image. Unlike `generate_video`, there's no per-type
+field variation — the same fixed field set covers every request:
+
+- Prompt fields: `subject`, `scene`, `camera`, `lighting`, `style`, `action`,
+  `color_palette`, `negative_prompt`
+- Generation params: `width`, `height`, `seed`, `num_inference_steps`,
+  `guidance_scale`
+- Model/performance knobs: `model`, `reference_urls`, `vram_safety_margin`,
+  `cpu_offload`
+
+Same S3-output behavior as `generate_video`: if `CLOUD_S3_OUTPUT_BUCKET` is
+configured, `image_path` is `null` and `s3_bucket`/`s3_key`/`s3_url` are
+populated instead; otherwise `image_path` points to the file on the API host.
+
 ### `list_video_types`
 
 Returns every `video_type` and which extra fields it uses on top of the
-shared base fields.
+shared base fields. No image equivalent exists since image has a single
+fixed field set — see `get_rules_config`'s `image_fields` instead.
 
 ### `get_models_config`
 
 Returns the model catalog the API host auto-selects from when `generate_video`
-is called without an explicit `model`: every model's capabilities, VRAM
-requirements, license, and `preferred_for` video types, plus the capability
-requirements each `video_type` imposes on that selection.
+or `generate_image` is called without an explicit `model`: every model's
+`media_type` (video or image), capabilities, VRAM requirements, license, and
+`preferred_for` video types, plus the capability requirements each
+`video_type` imposes on that selection.
 
 ### `get_rules_config`
 
-Returns the prompt-structure rules the API enforces per `video_type`: field
-guidance and evaluation criteria shared by every type, plus each type's own
-style guidance, extra fields, and additional criteria.
+Returns the prompt-structure rules the API enforces, for both media types:
+for video, field guidance and evaluation criteria shared by every
+`video_type`, plus each type's own style guidance, extra fields, and
+additional criteria; for image, the fixed field set (`image_fields`) and its
+evaluation criteria (`image_evaluation_criteria`).
 
 ## Configuration reference
 
