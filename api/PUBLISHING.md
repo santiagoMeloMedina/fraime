@@ -6,9 +6,10 @@ make publish-api   # from repo root
 make publish       # from api/
 ```
 
-Builds and pushes `santsq18/framie-api:latest` for `linux/amd64` (see
-[`scripts/publish.sh`](scripts/publish.sh) — repo/tag are hardcoded there,
-not passed as arguments).
+Builds and pushes `santsq18/framie-api:1.1.0` and `santsq18/framie-api:latest`
+for `linux/amd64` (see [`scripts/publish.sh`](scripts/publish.sh) — repo/tags
+are hardcoded there, not passed as arguments). Bump `VERSION` in that script
+before publishing a new release.
 
 ## You must be logged in to Docker Hub first
 

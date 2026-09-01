@@ -18,9 +18,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 API_DIR="$(dirname "$SCRIPT_DIR")"
 
 IMAGE="santsq18/framie-api"
-TAG="latest"
+VERSION="1.1.0"
 
-echo "About to build and push $IMAGE:$TAG for linux/amd64."
+echo "About to build and push $IMAGE:$VERSION and $IMAGE:latest for linux/amd64."
 echo "This is a public push, visible to anyone who pulls $IMAGE."
 read -r -p "Type the image name ($IMAGE) to confirm: " CONFIRM
 if [ "$CONFIRM" != "$IMAGE" ]; then
@@ -30,8 +30,9 @@ fi
 
 docker buildx build \
     --platform linux/amd64 \
-    -t "$IMAGE:$TAG" \
+    -t "$IMAGE:$VERSION" \
+    -t "$IMAGE:latest" \
     --push \
     "$API_DIR"
 
-echo "Pushed $IMAGE:$TAG"
+echo "Pushed $IMAGE:$VERSION and $IMAGE:latest"
