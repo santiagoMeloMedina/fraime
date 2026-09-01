@@ -18,15 +18,19 @@ and generates video or image output from a prompt.
 - **Structured prompts** — both media types take `fields` (subject, scene,
   camera, lighting, style, ...) instead of a raw prompt string, compiled
   server-side into the actual model prompt. Video fields are per-video-type
-  (`pixar`, `action`, `ugc_product_review`, `commercial_product_ad`, ...),
-  documented in [`instructions/rules.json`](instructions/rules.json) and
-  editable with `define`; image fields are a single fixed set (see
-  [`generation/prompt/image/model.py`](generation/prompt/image/model.py)).
+  (`pixar`, `action`, `ugc_product_review`, `commercial_product_ad`, ...);
+  image fields are a single fixed set (subject, scene, camera, lighting,
+  style, action, color_palette, negative_prompt). Both are documented and
+  scored against evaluation criteria in the same
+  [`instructions/rules.json`](instructions/rules.json) — video under
+  `shared`/`types`, image under `image_fields`/`image_evaluation_criteria` —
+  editable with `define`.
 - **Hardware detector** — reads accelerator (CUDA/MPS/CPU), VRAM, system RAM,
   and disk space, and matches those exact figures against each catalog
   model's requirements.
 - **`GET /config/models`, `GET /config/rules`** — return the running
-  instance's `instructions/models.json` and `instructions/rules.json`.
+  instance's `instructions/models.json` and `instructions/rules.json` in
+  full (both media types together; the caller picks out what it needs).
 
 ## Install
 
@@ -65,7 +69,10 @@ make define           # from api/
 
 Launches the interactive catalog editor
 ([`scripts/instructions/define.py`](scripts/instructions/define.py)). Pick
-`models` or `rules`, then edit, delete, add, or wipe entries. Schemas:
+`models` or `rules`; `rules` opens a sub-menu since `instructions/rules.json`
+holds two independent collections — video types (`types`) and image
+evaluation criteria (`image_evaluation_criteria`) — then edit, delete, add,
+or wipe entries within whichever you pick. Schemas:
 `scripts/instructions/models_schema.json`,
 `scripts/instructions/rules_schema.json`. Data: `instructions/`.
 
@@ -104,11 +111,11 @@ setting has a sensible default if left unset.
 | `GENERATION_RESOLUTION` | `1024x576` | Default target resolution |
 | `GENERATION_SEED` | unset | Default seed for reproducible generation |
 | `GENERATION_MODEL_CACHE_DIR` | Hugging Face's default cache | Where downloaded model weights (several to tens of GB each) are stored |
-| `GENERATION_OUTPUT_DIR` | `.generated` | Where generated `.mp4` files are written; created automatically |
+| `GENERATION_OUTPUT_DIR` | `.generated` | Where generated `.mp4`/`.png` files are written; created automatically |
 | `DETECTOR_CATALOG_PATH` | `instructions/models.json` | Path to the model catalog the detector matches against |
-| `PROMPT_RULES_PATH` | `instructions/rules.json` | Path to the prompt rules the `/config/rules` endpoint serves |
+| `PROMPT_RULES_PATH` | `instructions/rules.json` | Path to the prompt rules (both video and image) that `/config/rules` serves |
 | `AUTH_API_KEY` | unset (no auth) | If set, requests must send `Authorization: Bearer <key>` matching it |
-| `CLOUD_S3_OUTPUT_BUCKET` | unset | If set, generated videos upload to this S3 bucket instead of the host — see [S3 output](#s3-output) |
+| `CLOUD_S3_OUTPUT_BUCKET` | unset | If set, generated files upload to this S3 bucket instead of the host — see [S3 output](#s3-output) |
 | `CLOUD_S3_OUTPUT_PREFIX` | unset (bucket root) | Key prefix to upload under within `CLOUD_S3_OUTPUT_BUCKET` |
 
 ## Using the API
@@ -224,10 +231,13 @@ When configured:
 ### Inspecting the running configuration
 
 `GET /config/models` returns the full contents of
-[`instructions/models.json`](instructions/models.json); `GET /config/rules`
-returns [`instructions/rules.json`](instructions/rules.json). Both require
-the same `Authorization: Bearer <key>` header as `/generate` if
-`AUTH_API_KEY` is set.
+[`instructions/models.json`](instructions/models.json) (both media types'
+models together, distinguished by each entry's `media_type` field);
+`GET /config/rules` returns the full contents of
+[`instructions/rules.json`](instructions/rules.json) (both video's
+`shared`/`types` and image's `image_fields`/`image_evaluation_criteria`
+together). Both require the same `Authorization: Bearer <key>` header as
+`/generate` if `AUTH_API_KEY` is set.
 
 ```bash
 curl http://127.0.0.1:8000/config/models

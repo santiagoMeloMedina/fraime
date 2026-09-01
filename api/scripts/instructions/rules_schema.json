@@ -1,10 +1,21 @@
 {
   "data_file": "rules.json",
-  "collection_key": "types",
-  "entry_label": "video type",
-  "key_prompt": "Unique video type id (e.g. 'pixar', 'action')",
+  "collections": [
+    {
+      "key": "types",
+      "entry_label": "video type",
+      "item_schema": "video_type",
+      "key_prompt": "Unique video type id (e.g. 'pixar', 'action')"
+    },
+    {
+      "key": "image_evaluation_criteria",
+      "entry_label": "criterion",
+      "item_schema": "criterion",
+      "key_field": "name"
+    }
+  ],
   "schemas": {
-    "entry": {
+    "video_type": {
       "style_guidance": {
         "type": "string",
         "required": true,
