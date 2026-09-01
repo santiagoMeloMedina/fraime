@@ -4,7 +4,7 @@ from api.auth import require_api_key
 from api.config import app
 from api.detector.catalog import load_catalog
 from api.generation.prompt.rules import load_rules
-from api.model import GenerateImageResult, GenerateRequest
+from api.model import GenerateImageResult, GenerateRequest, GenerateSoundResult
 from api.service import generate_media
 
 __all__ = ["app"]
@@ -16,6 +16,14 @@ def generate(request: GenerateRequest) -> dict:
     if isinstance(result, GenerateImageResult):
         return {
             "image_path": result.image_path,
+            "model": result.model,
+            "s3_bucket": result.s3_bucket,
+            "s3_key": result.s3_key,
+            "s3_url": result.s3_url,
+        }
+    if isinstance(result, GenerateSoundResult):
+        return {
+            "sound_path": result.sound_path,
             "model": result.model,
             "s3_bucket": result.s3_bucket,
             "s3_key": result.s3_key,

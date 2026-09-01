@@ -16,6 +16,7 @@ VRAM_FIELDS = [
 DEFAULT_CAPABILITIES_BY_MEDIA_TYPE = {
     MediaType.VIDEO: ["text-to-video"],
     MediaType.IMAGE: ["text-to-image"],
+    MediaType.SOUND: ["text-to-speech"],
 }
 
 # Catalog VRAM figures are approximate (see models.json's own note) and real usage can

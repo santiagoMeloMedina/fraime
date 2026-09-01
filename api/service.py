@@ -5,23 +5,32 @@ from uuid import uuid4
 from diffusers.utils import export_to_video
 
 from api.config import environment
-from api.detector import select_best_model
+from api.detector import NoModelFitsError, select_best_model
+from api.detector.catalog import load_catalog
 from api.generation.create import GenerationHandler
 from api.generation.image.create import ImageGeneratorHandler
 from api.generation.media_type import MediaType
+from api.generation.sound.create import SoundGeneratorHandler
+from api.generation.sound.model import SoundVariant
 from api.model import (
     GenerateImageRequest,
     GenerateImageResult,
     GenerateRequest,
+    GenerateSoundRequest,
+    GenerateSoundResult,
     GenerateVideoRequest,
     GenerateVideoResult,
 )
 from api.utils.aws.s3 import generate_presigned_url, probe_write_access, upload_file
 
 
-def generate_media(request: GenerateRequest) -> GenerateVideoResult | GenerateImageResult:
+def generate_media(
+    request: GenerateRequest,
+) -> GenerateVideoResult | GenerateImageResult | GenerateSoundResult:
     if request.media_type == MediaType.IMAGE:
         return generate_image(request)
+    if request.media_type == MediaType.SOUND:
+        return generate_sound(request)
     return generate_video(request)
 
 
@@ -116,6 +125,49 @@ def generate_image(request: GenerateImageRequest) -> GenerateImageResult:
     stored = _store_output(str(output_path), s3_bucket, s3_key)
     return GenerateImageResult(
         image_path=stored.local_path,
+        model=model,
+        s3_bucket=stored.s3_bucket,
+        s3_key=stored.s3_key,
+        s3_url=stored.s3_url,
+    )
+
+
+def _resolve_pinned_sound_variant(variant: SoundVariant) -> str:
+    """Chatterbox variants are fixed classes, not arbitrary HF repo pins, so an
+    explicit `variant` resolves through the catalog to its documented model id
+    rather than being passed to a loader directly."""
+    catalog = load_catalog()
+    for candidate in catalog["models"].values():
+        if candidate.get("media_type") == MediaType.SOUND.value and candidate.get("variant") == variant.value:
+            return candidate["id"]
+    raise NoModelFitsError(f"No sound catalog model has variant={variant.value!r}")
+
+
+def generate_sound(request: GenerateSoundRequest) -> GenerateSoundResult:
+    import torchaudio
+
+    output_path, s3_bucket, s3_key = _reserve_output_path(".wav")
+
+    if request.variant is not None:
+        variant = request.variant
+        model = _resolve_pinned_sound_variant(variant)
+    else:
+        capabilities = ["multilingual"] if request.language and request.language.lower() != "en" else None
+        match = select_best_model(
+            media_type=MediaType.SOUND,
+            capabilities=capabilities,
+            safety_margin=request.vram_safety_margin,
+        )
+        variant = SoundVariant(match.variant)
+        model = match.model_id
+
+    handler = SoundGeneratorHandler(variant=variant, model_id=model)
+    wav, sample_rate = handler.generate(request.text, request.params, request.language, request.voice)
+    torchaudio.save(str(output_path), wav, sample_rate)
+
+    stored = _store_output(str(output_path), s3_bucket, s3_key)
+    return GenerateSoundResult(
+        sound_path=stored.local_path,
         model=model,
         s3_bucket=stored.s3_bucket,
         s3_key=stored.s3_key,
