@@ -1,7 +1,8 @@
 # Fraime MCP Server
 
-MCP server exposing the [Fraime API](../api/README.md) to agentic workflows,
-built on top of the [Fraime SDK](../sdk/README.md)'s `FraimeClient`.
+MCP server exposing the [Fraime API](../api/README.md)'s video, image, and
+voice generation to agentic workflows, built on top of the
+[Fraime SDK](../sdk/README.md)'s `FraimeClient`.
 
 ## Prerequisites
 
@@ -74,45 +75,75 @@ install (Option 2). For a `pip install fraime-mcp` into your own venv, point
 
 ### `generate_video`
 
-Generates one video.
+Generates one video from shared prompt fields (`subject`, `action`, `scene`,
+`camera`, `lighting`, `style`, `negative_prompt`), video-type-specific extras
+(`dialogue`, `voice_tone`, `text_overlay`, `aspect_ratio`,
+`audio_reference`, `tempo_bpm`, `text_content`, `transitions`), generation
+params (`duration_s`, `fps`, `resolution`, `seed`, `num_inference_steps`),
+and model/performance knobs (`model`, `reference_urls`,
+`vram_safety_margin`, `low_memory_decode`, `cpu_offload`).
 
-- Shared prompt fields: `subject`, `action`, `scene`, `camera`, `lighting`,
-  `style`, `negative_prompt`
-- Video-type-specific extras: `dialogue`, `voice_tone`, `text_overlay`,
-  `aspect_ratio`, `audio_reference`, `tempo_bpm`, `text_content`,
-  `transitions`
-- Generation params: `duration_s`, `fps`, `resolution`, `seed`,
-  `num_inference_steps`
-- Model/performance knobs: `model`, `reference_urls`, `vram_safety_margin`,
-  `low_memory_decode`, `cpu_offload`
+Fields that don't apply to the chosen `video_type` are ignored.
+`audio_reference` is required for `music_video`; `text_content` is required
+for `motion_graphics`.
 
-Fields that don't apply to the chosen `video_type` are ignored. `audio_reference`
-is required for `music_video`; `text_content` is required for
-`motion_graphics` — omitting either returns a tool error.
+Result includes `video_path` and `model`; if `CLOUD_S3_OUTPUT_BUCKET` is
+configured on the API (see [`api/README.md`](../api/README.md#s3-output)),
+`video_path` is `null` and `s3_bucket`/`s3_key`/`s3_url` are populated
+instead.
 
-If the API has `CLOUD_S3_OUTPUT_BUCKET` configured (see
-[`api/README.md`](../api/README.md#s3-output)), the result's `video_path` is
-`null` and `s3_bucket`, `s3_key`, and a presigned `s3_url` are populated
-instead; otherwise those three are `null` and `video_path` points to the
-file on the API host.
+### `generate_image`
+
+Generates one still image. Unlike `generate_video`, there's no per-type
+field variation: prompt fields (`subject`, `scene`, `camera`, `lighting`,
+`style`, `action`, `color_palette`, `negative_prompt`), generation params
+(`width`, `height`, `seed`, `num_inference_steps`, `guidance_scale`), and
+model/performance knobs (`model`, `reference_urls`, `vram_safety_margin`,
+`cpu_offload`).
+
+Same S3-output behavior as `generate_video`, with `image_path` in place of
+`video_path`.
+
+### `generate_voice`
+
+Generates one spoken-audio clip from raw `text` — no structured prompt.
+Chatterbox ships three fixed classes rather than arbitrary swappable HF
+repos, so `variant` (`base`/`turbo`/`multilingual`) pins one instead of
+`model`; omit it to auto-select by hardware (and by multilingual capability,
+if `language` requires it). `voice_url` clones a voice from a single 5-20s
+reference clip; `language` (ISO code) is only honored when the resolved
+variant is multilingual. Generation params: `exaggeration`, `cfg_weight`,
+`temperature`.
+
+Long `text` is chunked internally at sentence boundaries and stitched back
+together, since the underlying model truncates past ~30-40 seconds per call.
+
+Same S3-output behavior as the other tools, with `voice_path` in place of
+`video_path`.
 
 ### `list_video_types`
 
 Returns every `video_type` and which extra fields it uses on top of the
-shared base fields.
+shared base fields. No image or voice equivalent exists: image has a single
+fixed field set (see `get_rules_config`'s `image_fields`), and voice has no
+structured fields at all.
 
 ### `get_models_config`
 
-Returns the model catalog the API host auto-selects from when `generate_video`
-is called without an explicit `model`: every model's capabilities, VRAM
-requirements, license, and `preferred_for` video types, plus the capability
-requirements each `video_type` imposes on that selection.
+Returns the model catalog the API host auto-selects from when `generate_video`,
+`generate_image`, or `generate_voice` is called without an explicit `model`/
+`variant`: every model's `media_type` (video, image, or voice), capabilities,
+VRAM requirements, license, and `preferred_for` video types, plus the
+capability requirements each `video_type` imposes on that selection.
 
 ### `get_rules_config`
 
-Returns the prompt-structure rules the API enforces per `video_type`: field
-guidance and evaluation criteria shared by every type, plus each type's own
-style guidance, extra fields, and additional criteria.
+Returns the prompt-structure rules the API enforces, for video and image:
+for video, field guidance and evaluation criteria shared by every
+`video_type`, plus each type's own style guidance, extra fields, and
+additional criteria; for image, the fixed field set (`image_fields`) and its
+evaluation criteria (`image_evaluation_criteria`). Voice has no equivalent —
+call `generate_voice` directly, it just takes text.
 
 ## Configuration reference
 

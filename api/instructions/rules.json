@@ -1,4 +1,5 @@
 {
+  "note": "The compiled prompt (all fields joined into one string) is sent as-is to the model's text encoder(s) — this ruleset does not check or enforce a length limit. Most catalog models use a CLIP text encoder somewhere in their pipeline, and CLIP has a hard 77-token (~50-60 word) limit: anything past that is silently truncated and never reaches the model, with no error. Models that also have a longer-context encoder (e.g. FLUX's T5-XXL) are only partially affected, since that encoder still sees the full prompt. Keep individual field values concrete and concise rather than exhaustively descriptive — density beats length.",
   "criteria_schema": {
     "name": "Unique identifier for the criterion within its scope (shared or a given type).",
     "description": "What is being checked.",
@@ -398,5 +399,72 @@
       ],
       "caveat": "This content type is better served by templated motion-graphics tooling than diffusion text-to-video models; none of the currently integrated models target this output style."
     }
-  }
+  },
+  "image_fields": {
+    "subject": "Describe who/what is the focus in concrete, visually groundable terms; avoid abstract adjectives with no visual referent.",
+    "scene": "Describe environment, background, and time of day with enough specificity to anchor lighting and mood.",
+    "camera": "Specify shot type, angle, and framing; must be physically compatible with what the subject/scene description can show.",
+    "lighting": "Specify lighting style, direction, and mood; must not contradict the scene's implied lighting conditions.",
+    "style": "Name a concrete visual/artistic style or medium reference (photography genre, render engine, art movement) rather than a vague quality adjective like 'high quality'.",
+    "action": "Optional. Describe the subject's pose or momentary action as a single plausible instant; omit rather than implying motion a still frame can't convey.",
+    "color_palette": "Optional. Name the dominant tones/color scheme; must not contradict lighting or scene.",
+    "negative_prompt": "Optional. List concrete failure modes to avoid for this subject/style, not generic boilerplate."
+  },
+  "image_evaluation_criteria": [
+    {
+      "name": "specificity",
+      "description": "Every field uses concrete, visually groundable language rather than vague filler adjectives ('beautiful', 'amazing', 'high quality') with no visual referent.",
+      "check_type": "semantic",
+      "severity": "quality",
+      "weight": 0.25,
+      "remediation": "Replace vague adjectives with concrete descriptors specific to the subject/scene (material, color, shape, texture, expression)."
+    },
+    {
+      "name": "camera_scene_consistency",
+      "description": "Camera framing/angle is physically plausible for the described subject and scene (e.g. an extreme close-up doesn't contradict a 'full body' subject description).",
+      "check_type": "semantic",
+      "severity": "quality",
+      "weight": 0.2,
+      "remediation": "Adjust camera framing to match what the subject/scene description can actually show."
+    },
+    {
+      "name": "lighting_scene_consistency",
+      "description": "Lighting description does not contradict the scene's implied time of day/environment.",
+      "check_type": "semantic",
+      "severity": "quality",
+      "weight": 0.15,
+      "remediation": "Align lighting with the scene's implied conditions (e.g. don't pair 'midnight' with 'bright midday sun')."
+    },
+    {
+      "name": "color_palette_consistency",
+      "description": "When set, color_palette does not contradict the described lighting or scene.",
+      "check_type": "semantic",
+      "severity": "quality",
+      "weight": 0.1,
+      "remediation": "Adjust color_palette to tones plausible given the lighting/scene, or clear it if it can't be reconciled."
+    },
+    {
+      "name": "negative_prompt_coverage",
+      "description": "Negative prompt names concrete failure modes relevant to this subject/style, not generic boilerplate.",
+      "check_type": "semantic",
+      "severity": "quality",
+      "weight": 0.15,
+      "remediation": "Add failure-mode terms specific to the subject/style (e.g. anatomical errors for portraits, warped text for typography) instead of generic terms like 'bad quality, blurry'."
+    },
+    {
+      "name": "static_action_plausibility",
+      "description": "When set, action describes a single plausible instant/pose rather than an implied sequence of motion a still frame can't convey.",
+      "check_type": "semantic",
+      "severity": "quality",
+      "weight": 0.1,
+      "remediation": "Collapse a multi-beat action into the single instant being captured, or remove action if the subject is purely static."
+    },
+    {
+      "name": "field_non_empty",
+      "description": "Every required field (subject, scene, camera, lighting, style) is a non-empty string after stripping whitespace.",
+      "check_type": "structural",
+      "severity": "blocking",
+      "remediation": "Populate any empty required field before sending the prompt to generation; this should never reach the evaluator for a validly constructed ImagePromptComponents instance."
+    }
+  ]
 }

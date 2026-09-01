@@ -15,3 +15,14 @@ tqdm
 imageio
 imageio-ffmpeg
 boto3
+torchaudio
+torchcodec
+conformer
+gradio
+librosa==0.11.0
+omegaconf
+pykakasi==2.3.0
+pyloudnorm
+resemble-perth
+s3tokenizer
+spacy-pkuseg

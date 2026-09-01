@@ -1,7 +1,8 @@
 {
-  "note": "Curated catalog of open source video generation models, restricted to unconditionally free licenses only (Apache-2.0/MIT, no custom \"community license\", no MAU/revenue thresholds, no academic-only caveats). Verified via web search Aug 2026. Model ids are Hugging Face repo ids intended for DiffusionPipeline.from_pretrained. VRAM figures are sourced from model cards/community benchmarks and vary with resolution/frame count/offloading; treat as approximate. Deliberately excluded despite being otherwise capable: ByteDance Waver 1.0 (not open-weight at all), MiniMax-H3 (license bars local deployment in the US/EU/UK/South Korea), AnimateDiff (README says \"academic use\" despite an Apache-2.0 tag), LTX-Video/LTX-2.5 (LTX Community License: free only under $10M revenue, bars training competing AI systems, bars competing products), CogVideoX-5B (CogVideoX License: requires commercial registration, capped at 1M visits/month), HunyuanVideo-1.5 (Tencent Community License: free only under 100M MAU).",
+  "note": "Curated catalog of open source video, image, and voice generation models, restricted to unconditionally free licenses only (Apache-2.0/MIT, no custom \"community license\", no MAU/revenue thresholds, no academic-only caveats). Verified via web search Aug 2026. Model ids are Hugging Face repo ids intended for DiffusionPipeline.from_pretrained (video), AutoPipelineForText2Image/AutoPipelineForImage2Image.from_pretrained (image), or chatterbox's own <Variant>.from_pretrained(device) (voice — id documents which HF repo that variant loads, but isn't passed as an argument; `variant` is the actual class-selection key). Every entry's `media_type` (\"video\", \"image\", or \"voice\") determines which handler and default capabilities apply. VRAM figures are sourced from model cards/community benchmarks and vary with resolution/frame count/offloading; treat as approximate. Deliberately excluded despite being otherwise capable: ByteDance Waver 1.0 (not open-weight at all), MiniMax-H3 (license bars local deployment in the US/EU/UK/South Korea), AnimateDiff (README says \"academic use\" despite an Apache-2.0 tag), LTX-Video/LTX-2.5 (LTX Community License: free only under $10M revenue, bars training competing AI systems, bars competing products), CogVideoX-5B (CogVideoX License: requires commercial registration, capped at 1M visits/month), HunyuanVideo-1.5 (Tencent Community License: free only under 100M MAU).",
   "models": {
     "magi_1_distilled": {
+      "media_type": "video",
       "id": "sand-ai/MAGI-1",
       "variant": "4.5B-distill+fp8_quant",
       "org": "Sand AI",
@@ -13,6 +14,7 @@
       "notes": "Autoregressive chunk-based generation (predicts fixed-length video chunks sequentially, next chunk starts before current fully denoises) rather than single-shot diffusion — designed to hold up better over longer/more dynamic motion than same-tier single-shot models. 12GB figure requires window_size=1 in the distill+quant config."
     },
     "wan2.1_1.3b": {
+      "media_type": "video",
       "id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
       "org": "Alibaba",
       "params": "1.3B",
@@ -22,6 +24,7 @@
       "notes": "Smallest member of the Wan family, explicitly built for consumer GPUs."
     },
     "cogvideox_2b": {
+      "media_type": "video",
       "id": "zai-org/CogVideoX-2b",
       "org": "Zhipu AI (formerly THUDM)",
       "params": "2B",
@@ -32,6 +35,7 @@
       "notes": "Smaller sibling of CogVideoX-5B — note the 5B is under the restrictive custom CogVideoX License, but the 2B was relicensed to Apache-2.0. Trained in FP16; quantizable further with PytorchAO/Optimum-quanto down to free-tier-Colab-class GPUs."
     },
     "wan2.2_ti2v_5b": {
+      "media_type": "video",
       "id": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
       "org": "Alibaba",
       "params": "5B",
@@ -42,6 +46,7 @@
       "notes": "Unified T2V+I2V in one checkpoint. ~27.4GB at FP16 for 25 frames @ 768x512; FP8 cuts ~40%. Very fast — a 5s 720p clip in under 9 minutes on a single consumer GPU."
     },
     "wan2.2_a14b": {
+      "media_type": "video",
       "id": "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
       "org": "Alibaba",
       "params": "27B total / 14B active per step (MoE: high-noise + low-noise experts)",
@@ -51,6 +56,7 @@
       "notes": "First open source MoE video model. Default requires an 80GB-class GPU (A100/H100); --offload_model/--t5_cpu flags trade speed for lower VRAM but 80GB is the no-compromise figure."
     },
     "mochi_1": {
+      "media_type": "video",
       "id": "genmo/mochi-1-preview",
       "org": "Genmo",
       "params": "10B",
@@ -62,6 +68,7 @@
       "notes": "Very strong motion quality/coherence. ~60-70GB single-GPU at full precision for the full 163-frame length; the bf16 variant with ComfyUI-level optimization can run under 22GB, at reduced frame count/speed."
     },
     "skyreels_v1": {
+      "media_type": "video",
       "id": "Skywork/SkyReels-V1-Hunyuan-T2V",
       "org": "Skywork AI",
       "params": "13B",
@@ -72,6 +79,7 @@
       "notes": "Fine-tuned from HunyuanVideo on ~10M film/TV clips; best open option for human-centric cinematic quality (faces, expression, camera work)."
     },
     "magi_1_full": {
+      "media_type": "video",
       "id": "sand-ai/MAGI-1",
       "variant": "24B",
       "org": "Sand AI",
@@ -80,6 +88,60 @@
       "min_vram_gb": null,
       "capabilities": ["text-to-video", "image-to-video"],
       "notes": "Full, non-distilled version. Exact VRAM floor not confirmed via search; scaling from the 4.5B variant's ~24GB at standard precision implies an 80GB+ class requirement. Same autoregressive chunk-based architecture as magi_1_distilled, at full quality. min_vram_gb left null (excluded from matching) until a figure is confirmed."
+    },
+    "flux_1_schnell": {
+      "media_type": "image",
+      "id": "black-forest-labs/FLUX.1-schnell",
+      "org": "Black Forest Labs",
+      "params": "12B",
+      "license": "Apache-2.0",
+      "min_vram_gb": 24,
+      "min_vram_gb_quantized": 12,
+      "capabilities": ["text-to-image", "image-to-image"],
+      "notes": "Latency-distilled (4-step) rectified-flow transformer — trades a little fidelity for very fast single-image generation. min_vram_gb_quantized reflects int8 weight-only quantization (transformer + T5 text encoder), which runs comfortably on Apple Silicon (MPS) unified memory without CPU offload."
+    },
+    "ssd_1b": {
+      "media_type": "image",
+      "id": "segmind/SSD-1B",
+      "org": "Segmind",
+      "params": "1.3B",
+      "license": "Apache-2.0",
+      "min_vram_gb": 8,
+      "capabilities": ["text-to-image", "image-to-image"],
+      "notes": "Distilled/pruned SDXL: ~50% fewer parameters and ~60% faster than base SDXL while staying pipeline-compatible (SDXL-architecture LoRAs and the standard img2img pipeline apply). Runs well on 8GB VRAM — usable down to 4-6GB at a significant speed cost, not treated as a separate tier here. The lightest model in this catalog; picked over flux_1_schnell on constrained hardware."
+    },
+    "chatterbox_base": {
+      "media_type": "voice",
+      "id": "ResembleAI/chatterbox",
+      "variant": "base",
+      "org": "Resemble AI",
+      "params": "0.5B",
+      "license": "MIT",
+      "min_vram_gb": 8,
+      "capabilities": ["text-to-speech"],
+      "notes": "Zero-shot voice cloning from a short (5-20s) reference clip via audio_prompt_path — every variant supports this, not a separate capability. English only. Community figures for VRAM range 8-16GB depending on generation length; 8GB used here as the conservative floor."
+    },
+    "chatterbox_turbo": {
+      "media_type": "voice",
+      "id": "ResembleAI/chatterbox-turbo",
+      "variant": "turbo",
+      "org": "Resemble AI",
+      "params": "350M",
+      "license": "MIT",
+      "min_vram_gb": 1,
+      "capabilities": ["text-to-speech"],
+      "notes": "Distilled for low-latency voice agents: single-step speech-token-to-mel decoding (vs. base's 10 steps), ~1GB VRAM at FP16. Same zero-shot voice cloning as base, trades some fidelity/expressiveness for speed. English only."
+    },
+    "chatterbox_multilingual": {
+      "media_type": "voice",
+      "id": "ResembleAI/chatterbox",
+      "variant": "multilingual",
+      "org": "Resemble AI",
+      "params": "0.5B",
+      "license": "MIT",
+      "min_vram_gb": 8,
+      "capabilities": ["text-to-speech", "multilingual"],
+      "notes": "Same base architecture and voice-cloning capability as chatterbox_base, trained on 23 languages instead of English-only. Shares the same underlying HF repo as chatterbox_base (`variant` is what actually selects the class/weights, not `id`). VRAM not separately benchmarked — assumed comparable to base given the shared architecture."
     }
   },
   "video_type_capabilities": {

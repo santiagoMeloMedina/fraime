@@ -7,8 +7,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-ffdd00.svg)](https://buymeacoffee.com/smelomedina)
 
-Open source AI media generation platform. Video is the first medium
-supported, with more planned.
+Open source AI media generation platform. Generates video, image, and voice
+output from a single self-hosted API.
 
 ## The problem
 
@@ -16,18 +16,19 @@ AI media generation today is either hidden behind paywalls that get more
 expensive the more you use them, or "free" in name only — the open source
 models exist, but actually running one yourself means figuring out which
 model fits your hardware, wiring up prompt structure, and managing the whole
-generation pipeline by hand. Video creation without AI, meanwhile, is still
-a slow, manual process. The gap isn't a lack of capable open models — it's
-the friction and hardware guesswork standing between you and using them.
+generation pipeline by hand. Creating video, image, or voice content without
+AI, meanwhile, is still a slow, manual process. The gap isn't a lack of
+capable open models — it's the friction and hardware guesswork standing
+between you and using them.
 
 ## The vision
 
-Nobody should need to be a systems engineer to use an open source video
-model, and nobody should have to pay a token-metered paywall for something
-their own hardware can already do. Fraime's bet is that automatically
-matching hardware to the right model — instead of making a human do that
-matching by hand — is what actually makes self-hosted AI media generation
-practical, not just theoretically free.
+Nobody should need to be a systems engineer to use an open source
+generation model, and nobody should have to pay a token-metered paywall for
+something their own hardware can already do. Fraime's bet is that
+automatically matching hardware to the right model — instead of making a
+human do that matching by hand — is what actually makes self-hosted AI
+media generation practical, not just theoretically free.
 
 ## The solution
 

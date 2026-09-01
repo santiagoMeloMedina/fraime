@@ -1,10 +1,15 @@
 # Prompt structure rules
 
-Defines how a video generation prompt is structured, per video type, and the
-rules used to evaluate and improve one. The full machine-readable version of
-this is `rules.json`; this document explains what it means.
+Defines how a generation prompt is structured — per video type for video, as
+a single fixed field set for image — and the rules used to evaluate and
+improve one. The full machine-readable version for both lives in
+`rules.json`: video under its `shared`/`types` keys, image under its
+`image_fields`/`image_evaluation_criteria` keys. This document explains what
+they mean.
 
-## Shared fields
+## Video
+
+### Shared fields
 
 Every video type is built from these fields:
 
@@ -18,7 +23,7 @@ Every video type is built from these fields:
 | `style`            | A concrete visual/style reference (rendering style, film stock, animation technique) — never a vague quality adjective like "high quality". |
 | `negative_prompt`  | Concrete failure modes to avoid for this content type, not generic boilerplate.        |
 
-## Video types
+### Video types
 
 Each video type reuses the shared fields and, where its content genuinely
 requires it, adds fields of its own. Types that only differ in tone/vocabulary
@@ -41,7 +46,7 @@ can't express something that type needs.
 | `music_video` | `audio_reference`, `tempo_bpm` | Rhythm/beat-synced visuals rather than narrative action. Not supported by any currently integrated model — defined for future use. |
 | `motion_graphics` | `text_content`, `transitions` | Abstract/graphic style (flat design, iconography, kinetic typography) rather than photoreal/cinematic. Better served by templated motion-graphics tooling than diffusion video models today. |
 
-## Evaluation criteria
+### Evaluation criteria
 
 Each video type carries a list of criteria a prompt is checked against, on
 top of the criteria shared by every type (specificity, camera/action
@@ -62,21 +67,37 @@ feasibility, and all required fields being non-empty). Each criterion has:
 - **`remediation`** — the concrete fix to try when the criterion fails,
   phrased as a field update rather than just a description of the problem.
 
-Some recurring blocking checks worth calling out explicitly:
+A few recurring blocking checks: `dialogue_duration_fit` (spoken word count
+must fit the clip duration, ~2.5 words/second), `caption_length_fit` /
+`text_length_fit` (on-screen text must fit the duration, ~15 chars/second,
+for `social_short_form_ad`/`motion_graphics`), `audio_reference_present`
+(`music_video` needs a reference track), and `aspect_ratio_valid`
+(`social_short_form_ad` must use `9:16` or `4:5`).
 
-- **`dialogue_duration_fit`** — spoken word count, at ~2.5 words/second,
-  must fit the requested clip duration. Applies to every dialogue-bearing
-  type.
-- **`caption_length_fit` / `text_length_fit`** — on-screen text character
-  count, at ~15 readable characters/second, must fit the clip duration.
-  Applies to `social_short_form_ad` and `motion_graphics`.
-- **`audio_reference_present`** — `music_video` cannot be evaluated at all
-  without a reference track to sync to.
-- **`aspect_ratio_valid`** — `social_short_form_ad` must use a known
-  vertical short-form ratio (`9:16`, `4:5`).
+## Image
 
-This ruleset is the data contract a future prompt evaluator/improver will
-read against: given a video type and a compiled prompt, it resolves that
-type's criteria, scores or blocks the prompt accordingly, and applies each
-failing criterion's `remediation` until the prompt clears an acceptable
-threshold.
+Unlike video, there is no per-type variation — a single fixed field set
+covers every image generation request, since (unlike video's dialogue-driven,
+music-synced, or motion-graphics types) there's no structural difference in
+what an image prompt needs to express.
+
+### Fields
+
+| Field             | Rule                                                                                  |
+|--------------------|----------------------------------------------------------------------------------------|
+| `subject`          | Concrete, visually groundable description of who/what is the focus. No abstract adjectives with no visual referent. |
+| `scene`            | Environment, background, time of day — specific enough to anchor lighting and mood.   |
+| `camera`           | Shot type, angle, and framing. Must be physically compatible with what the subject/scene can show. |
+| `lighting`         | Lighting style, direction, and mood. Must not contradict the scene's implied conditions. |
+| `style`            | A concrete visual/artistic style or medium reference — never a vague quality adjective like "high quality". |
+| `action` (optional) | The subject's pose or momentary action, as a single plausible instant — not implied motion a still frame can't convey. |
+| `color_palette` (optional) | Dominant tones/color scheme. Must not contradict lighting or scene.           |
+| `negative_prompt` (optional) | Concrete failure modes to avoid, not generic boilerplate.                   |
+
+### Evaluation criteria
+
+Every image prompt is checked against: specificity, camera/scene consistency,
+lighting/scene consistency, color-palette consistency (when set), negative-prompt
+coverage, static-action plausibility (when `action` is set), and all required
+fields being non-empty. Same `check_type`/`severity`/`weight`/`remediation`
+shape as video's criteria (see above).

@@ -3,6 +3,7 @@ from typing import Any
 
 from api.detector.catalog import load_catalog
 from api.detector.hardware import HardwareInfo, detect_hardware
+from api.generation.media_type import MediaType
 
 # Ordered best-fidelity-first: "standard" precision is preferred whenever it fits;
 # the others are fallbacks that trade fidelity/speed for a lower VRAM floor.
@@ -12,7 +13,11 @@ VRAM_FIELDS = [
     ("optimized", "min_vram_gb_optimized"),
 ]
 
-DEFAULT_CAPABILITIES = ["text-to-video"]
+DEFAULT_CAPABILITIES_BY_MEDIA_TYPE = {
+    MediaType.VIDEO: ["text-to-video"],
+    MediaType.IMAGE: ["text-to-image"],
+    MediaType.VOICE: ["text-to-speech"],
+}
 
 # Catalog VRAM figures are approximate (see models.json's own note) and real usage can
 # run over them — e.g. the VAE decode step spikes above the steady-state denoising
@@ -32,6 +37,7 @@ class ModelMatch:
     hardware: HardwareInfo
     matched_vram_gb: float
     precision: str  # "standard" | "quantized" | "optimized"
+    media_type: MediaType
     requested_video_type: str | None
     required_capabilities: list[str]
     capabilities: list[str]
@@ -45,14 +51,16 @@ def select_best_model(
     capabilities: list[str] | None = None,
     hardware: HardwareInfo | None = None,
     safety_margin: bool = False,
+    media_type: MediaType = MediaType.VIDEO,
 ) -> ModelMatch:
     """Detect local hardware (unless provided) and pick the best-fitting catalog model.
 
     Matches on exact figures rather than a coarse hardware/model tier: a model is a
-    candidate if it has all the required capabilities and at least one of its VRAM
-    figures (standard/quantized/optimized) fits the detected VRAM. Among candidates
-    tagged `preferred_for` this video_type, the one using the most VRAM while still
-    fitting wins; if none of those fit, the same rule applies across all candidates.
+    candidate if it belongs to `media_type`, has all the required capabilities, and
+    has at least one of its VRAM figures (standard/quantized/optimized) fitting the
+    detected VRAM. Among candidates tagged `preferred_for` this video_type, the one
+    using the most VRAM while still fitting wins; if none of those fit, the same rule
+    applies across all candidates.
 
     If `safety_margin` is set, matching is done against a reduced VRAM budget
     (`SAFETY_MARGIN_RATIO` reserved as headroom) instead of the full detected amount,
@@ -70,16 +78,17 @@ def select_best_model(
             raise ValueError(f"Unknown video_type: {video_type!r}")
         required |= set(mapping["required"])
     if not required:
-        required = set(DEFAULT_CAPABILITIES)
+        required = set(DEFAULT_CAPABILITIES_BY_MEDIA_TYPE[media_type])
 
     capable = {
         key: model
         for key, model in catalog["models"].items()
-        if required.issubset(model["capabilities"])
+        if model.get("media_type", MediaType.VIDEO.value) == media_type.value
+        and required.issubset(model["capabilities"])
     }
     if not capable:
         raise NoModelFitsError(
-            f"No catalog model has all required capabilities: {sorted(required)}."
+            f"No {media_type.value} catalog model has all required capabilities: {sorted(required)}."
         )
 
     fits = {}
@@ -125,6 +134,7 @@ def select_best_model(
         hardware=hardware,
         matched_vram_gb=matched_vram_gb,
         precision=precision,
+        media_type=media_type,
         requested_video_type=video_type,
         required_capabilities=sorted(required),
         capabilities=model.get("capabilities", []),

@@ -1,7 +1,8 @@
 # Fraime SDK
 
 Python client for the [Fraime API](../api/README.md): typed models/enums for
-building a generation request, instead of hand-writing JSON.
+building a video, image, or voice generation request, instead of
+hand-writing JSON.
 
 ## Prerequisites
 
@@ -19,18 +20,9 @@ pip install fraime-sdk
 
 ### Option 2 — from a local clone
 
-Step by step, from scratch:
-
 ```bash
-# 1. Clone the repo (skip if you already have it)
 git clone <this-repo-url>
 cd fraime
-
-# 2. (Recommended) create a virtualenv for your own project
-python3 -m venv .venv
-source .venv/bin/activate
-
-# 3. Install the SDK from the sdk/ folder
 pip install ./sdk
 #   or, for local development on the SDK itself (editable install):
 pip install -e ./sdk
@@ -52,7 +44,7 @@ client = FraimeClient(
     api_key="your-api-key",             # or set FRAIME_API_KEY instead; omit both if the API has none configured
 )
 
-response = client.generate(
+response = client.generate_video(
     video_type=VideoType.PIXAR,
     fields=CinematicPromptFields(
         subject="a small orange fox with oversized ears",
@@ -63,8 +55,6 @@ response = client.generate(
         style="3D animated feature style, stylized proportions, warm rim lighting",
     ),
     params=GenerationParams(duration_s=3, fps=16, resolution="768x512"),
-    # model=...              # optional: pin an exact model instead of auto-selecting
-    # references=[...]       # optional: Reference(url=...) list, for image-to-video
 )
 
 print(response.video_path, response.model)
@@ -93,44 +83,105 @@ Every `video_type` has its own field set — some add fields the base six
 | `MOTION_GRAPHICS` | `MotionGraphicsPromptFields` | `text_content`, `transitions` |
 
 Look up a class from `VideoType` directly instead of hardcoding the table:
+`PROMPT_FIELDS_BY_VIDEO_TYPE[VideoType.SOCIAL_SHORT_FORM_AD]` returns
+`SocialAdPromptFields`.
+
+For image-to-video, pass `references=[Reference(url="https://...")]` to
+`generate_video`.
+
+## Image generation
+
+Unlike video, there's no per-type variation — `ImagePromptFields` is a
+single fixed field set for every image request:
 
 ```python
-from fraime import PROMPT_FIELDS_BY_VIDEO_TYPE, VideoType
+from fraime import FraimeClient, ImagePromptFields, ImageGenerationParams
 
-fields_class = PROMPT_FIELDS_BY_VIDEO_TYPE[VideoType.SOCIAL_SHORT_FORM_AD]
-# -> SocialAdPromptFields
-```
+client = FraimeClient(base_url="http://127.0.0.1:8000")
 
-### Reference images (image-to-video)
-
-```python
-from fraime import Reference
-
-response = client.generate(
-    video_type=VideoType.UGC_PRODUCT_REVIEW,
-    fields=ugc_fields,
-    params=params,
-    references=[Reference(url="https://example.com/product-photo.jpg")],
+response = client.generate_image(
+    fields=ImagePromptFields(
+        subject="a matte black ceramic coffee mug with a minimalist logo",
+        scene="a clean marble kitchen counter with soft blurred greenery in the background",
+        camera="close-up, straight-on angle, shallow depth of field",
+        lighting="controlled studio softbox lighting, warm highlight on the ceramic surface",
+        style="polished commercial product photography, crisp reflections",
+        color_palette="warm neutrals with a matte black accent",
+        negative_prompt="blurry, low quality, warped shape, extra objects, watermark, text overlay",
+    ),
+    params=ImageGenerationParams(width=1024, height=1024),
 )
+
+print(response.image_path, response.model)
 ```
+
+`response` is a `GenerateImageResponse` (`image_path`, `model`, `s3_bucket`,
+`s3_key`, `s3_url`) — same S3-output behavior as video: if the API has
+`CLOUD_S3_OUTPUT_BUCKET` configured, `image_path` is `None` and the S3 fields
+are populated instead.
+
+Reference images (image-to-image) work the same way as video's
+image-to-video: pass `references=[Reference(url=...)]` to `generate_image`.
+
+## Voice generation
+
+Voice has no structured `fields` the way video/image do — chatterbox's
+input is literal spoken `text`, not a compiled scene description:
+
+```python
+from fraime import FraimeClient, VoiceGenerationParams
+
+client = FraimeClient(base_url="http://127.0.0.1:8000")
+
+response = client.generate_voice(
+    text="Hello from Chatterbox. This is a test of the Fraime voice generation pipeline.",
+    params=VoiceGenerationParams(exaggeration=0.5, cfg_weight=0.5, temperature=0.8),
+    variant=None,      # VoiceVariant.BASE / .TURBO / .MULTILINGUAL; omit to auto-select
+    language=None,     # ISO code, e.g. "es"; only honored when the resolved variant is multilingual
+    voice=None,        # Reference(url=...) to clone a voice from a 5-20s clean clip
+)
+
+print(response.voice_path, response.model)
+```
+
+`response` is a `GenerateVoiceResponse` (`voice_path`, `model`, `s3_bucket`,
+`s3_key`, `s3_url`) — same S3-output behavior as video/image.
+
+Unlike video/image, `generate_voice` has no `model`/`references`/`cpu_offload`
+argument: chatterbox ships three fixed classes rather than arbitrary
+swappable HF repos, so `variant` is the pin mechanism instead of `model`, and
+`voice` is a single `Reference` rather than a list.
+
+- `base`/`turbo` are English-only and ignore `language`; only `multilingual`
+  (23 languages) honors it.
+- Every variant supports zero-shot voice cloning via `voice`; `turbo` trades
+  some expressiveness for much lower VRAM/latency.
 
 ### Inspecting the API's configuration
 
 ```python
 models_config = client.get_models_config()
 for key, entry in models_config.models.items():
-    print(key, entry.id, entry.capabilities, entry.min_vram_gb)
+    print(key, entry.media_type, entry.id, entry.capabilities, entry.min_vram_gb)
 
 rules_config = client.get_rules_config()
-print(rules_config.shared.fields)
-print(rules_config.types["pixar"].style_guidance)
+print(rules_config.shared.fields, rules_config.types["pixar"].style_guidance)
+print(rules_config.image_fields, rules_config.image_evaluation_criteria)
 ```
 
 `get_models_config()` returns `ModelsConfig` (`models: dict[str, ModelCatalogEntry]`,
-`video_type_capabilities: dict[str, VideoTypeCapabilityRequirement]`).
-`get_rules_config()` returns `RulesConfig` (`shared: SharedPromptRules`,
-`types: dict[str, VideoTypeRules]`). Both raise the same `FraimeAuthError` /
-`FraimeAPIError` / `FraimeConnectionError` as `generate()`.
+`video_type_capabilities: dict[str, VideoTypeCapabilityRequirement]`) —
+video, image, and voice models together in one catalog, distinguished by
+each entry's `media_type` (`MediaType.VIDEO` / `.IMAGE` / `.VOICE`).
+
+`get_rules_config()` returns `RulesConfig` — video and image rules together,
+in one file on the API side: `shared`/`types` for video,
+`image_fields`/`image_evaluation_criteria` for image, plus a shared
+`criteria_schema` describing what each evaluation criterion field means.
+Voice has no equivalent — there's nothing to compile, so nothing to score.
+
+Both raise the same `FraimeAuthError` / `FraimeAPIError` / `FraimeConnectionError`
+as `generate_video()`/`generate_image()`/`generate_voice()`.
 
 ### Error handling
 
@@ -138,7 +189,7 @@ print(rules_config.types["pixar"].style_guidance)
 from fraime import FraimeAuthError, FraimeAPIError, FraimeConnectionError
 
 try:
-    response = client.generate(video_type=VideoType.PIXAR, fields=fields, params=params)
+    response = client.generate_video(video_type=VideoType.PIXAR, fields=fields, params=params)
 except FraimeAuthError:
     ...  # missing/invalid API key
 except FraimeAPIError as e:

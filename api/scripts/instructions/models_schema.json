@@ -5,15 +5,21 @@
   "key_prompt": "Unique model key (e.g. 'wan2.2_ti2v_5b')",
   "schemas": {
     "entry": {
+      "media_type": {
+        "type": "enum",
+        "choices": ["video", "image", "voice"],
+        "required": true,
+        "description": "Whether this model generates video, image, or voice output; determines which generation handler and default capabilities apply"
+      },
       "id": {
         "type": "string",
         "required": true,
-        "description": "Hugging Face repo id, intended for DiffusionPipeline.from_pretrained"
+        "description": "Hugging Face repo id. For video/image, intended for DiffusionPipeline.from_pretrained. For voice (chatterbox), documents which repo the variant loads internally but isn't itself passed to any loader call — `variant` is the actual class-selection key, and two voice entries can share the same id."
       },
       "variant": {
         "type": "string",
         "required": false,
-        "description": "Checkpoint/variant label when the repo id alone doesn't disambiguate it"
+        "description": "Checkpoint/variant label when the repo id alone doesn't disambiguate it. Required in practice for voice entries (base/turbo/multilingual), since it's the key that selects which chatterbox class to instantiate."
       },
       "org": {
         "type": "string",
@@ -49,7 +55,7 @@
       "capabilities": {
         "type": "list",
         "item_type": "enum",
-        "choices": ["text-to-video", "image-to-video", "audio", "audio-sync"],
+        "choices": ["text-to-video", "image-to-video", "text-to-image", "image-to-image", "text-to-speech", "multilingual", "audio", "audio-sync"],
         "required": true,
         "description": "Generation capabilities this model supports"
       },

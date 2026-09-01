@@ -299,6 +299,59 @@ def discover_instruction_schemas() -> list[tuple[str, Path]]:
     )
 
 
+def _collection_configs(config: dict) -> list[dict]:
+    """Normalizes a schema config into a list of collection configs. A schema file
+    either declares one collection directly at its top level (legacy shape, implicit
+    item_schema "entry") or multiple named collections under "collections" (each with
+    its own item_schema), so a single instruction type can manage more than one
+    independent collection within the same data file."""
+    if "collections" in config:
+        return config["collections"]
+    return [
+        {
+            "key": config["collection_key"],
+            "entry_label": config["entry_label"],
+            "item_schema": "entry",
+            "key_prompt": config.get("key_prompt"),
+            "key_field": config.get("key_field", "name"),
+        }
+    ]
+
+
+def _run_collection(data: dict, schemas: dict, coll_config: dict) -> None:
+    key = coll_config["key"]
+    key_prompt = coll_config.get("key_prompt")
+    data.setdefault(key, {} if key_prompt else [])
+
+    collection = Collection(
+        data[key],
+        key_field=None if key_prompt else coll_config.get("key_field", "name"),
+    )
+    manage_collection(
+        collection,
+        schemas,
+        coll_config.get("item_schema", "entry"),
+        coll_config["entry_label"],
+        key_prompt=key_prompt,
+    )
+
+
+def _choose_collection(data: dict, schemas: dict, collections: list[dict]) -> None:
+    while True:
+        print("\nCollections:")
+        for i, coll_config in enumerate(collections, 1):
+            print(f"  {i}) {coll_config['entry_label']}  ({coll_config['key']})")
+        print("  b) Back")
+        choice = prompt("> ").strip().lower()
+
+        if choice == "b":
+            return
+        if choice.isdigit() and 1 <= int(choice) <= len(collections):
+            _run_collection(data, schemas, collections[int(choice) - 1])
+            continue
+        print("Unrecognized choice.")
+
+
 def run_instruction_type(name: str, schema_path: Path) -> None:
     config = load_json(schema_path)
     data_path = INSTRUCTIONS_DIR / config["data_file"]
@@ -308,20 +361,12 @@ def run_instruction_type(name: str, schema_path: Path) -> None:
     else:
         data = {}
 
-    collection_key = config["collection_key"]
-    data.setdefault(collection_key, {} if config.get("key_prompt") else [])
+    collections = _collection_configs(config)
+    if len(collections) == 1:
+        _run_collection(data, config["schemas"], collections[0])
+    else:
+        _choose_collection(data, config["schemas"], collections)
 
-    collection = Collection(
-        data[collection_key],
-        key_field=None if config.get("key_prompt") else config.get("key_field", "name"),
-    )
-    manage_collection(
-        collection,
-        config["schemas"],
-        "entry",
-        config["entry_label"],
-        key_prompt=config.get("key_prompt"),
-    )
     save_json(data_path, data)
 
 

@@ -1,14 +1,22 @@
 import os
 
 from fraime.model import (
+    GenerateImageRequest,
+    GenerateImageResponse,
     GenerateVideoRequest,
     GenerateVideoResponse,
+    GenerateVoiceRequest,
+    GenerateVoiceResponse,
     GenerationParams,
+    ImageGenerationParams,
+    ImagePromptFields,
     ModelsConfig,
     PromptFields,
     Reference,
     RulesConfig,
     VideoType,
+    VoiceGenerationParams,
+    VoiceVariant,
 )
 from fraime.repository import GenerationRepository
 from fraime.service import GenerationService
@@ -29,7 +37,7 @@ class FraimeClient:
         repository = GenerationRepository(base_url=base_url, api_key=api_key, timeout=timeout)
         self._service = GenerationService(repository)
 
-    def generate(
+    def generate_video(
         self,
         video_type: VideoType,
         fields: PromptFields,
@@ -51,6 +59,44 @@ class FraimeClient:
             cpu_offload=cpu_offload,
         )
         return self._service.generate_video(request)
+
+    def generate_image(
+        self,
+        fields: ImagePromptFields,
+        params: ImageGenerationParams,
+        model: str | None = None,
+        references: list[Reference] | None = None,
+        vram_safety_margin: bool = True,
+        cpu_offload: bool = True,
+    ) -> GenerateImageResponse:
+        request = GenerateImageRequest(
+            fields=fields,
+            params=params,
+            model=model,
+            references=references,
+            vram_safety_margin=vram_safety_margin,
+            cpu_offload=cpu_offload,
+        )
+        return self._service.generate_image(request)
+
+    def generate_voice(
+        self,
+        text: str,
+        params: VoiceGenerationParams,
+        variant: VoiceVariant | None = None,
+        language: str | None = None,
+        voice: Reference | None = None,
+        vram_safety_margin: bool = True,
+    ) -> GenerateVoiceResponse:
+        request = GenerateVoiceRequest(
+            text=text,
+            params=params,
+            variant=variant,
+            language=language,
+            voice=voice,
+            vram_safety_margin=vram_safety_margin,
+        )
+        return self._service.generate_voice(request)
 
     def get_models_config(self) -> ModelsConfig:
         return self._service.get_models_config()

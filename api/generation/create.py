@@ -10,6 +10,7 @@ from PIL import Image
 
 from api.config import environment
 from api.detector import Accelerator, detect_hardware
+from api.generation.media_type import MediaType
 from api.generation.model import GenerationParams, Reference
 from api.generation.prompt.handler import PromptHandler
 from api.utils.progress import make_progress_reporter
@@ -99,7 +100,7 @@ class GenerationHandler:
         params: GenerationParams,
         references: list[Reference] | None = None,
     ):
-        compiled_prompt = PromptHandler.compile(video_type, fields)
+        compiled_prompt = PromptHandler.compile(MediaType.VIDEO, fields, video_type=video_type)
         width, height = (int(value) for value in params.resolution.split("x"))
         generator = (
             torch.Generator(device=self.device).manual_seed(params.seed)

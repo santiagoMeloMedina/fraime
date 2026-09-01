@@ -1,4 +1,13 @@
-from fraime.model import GenerateVideoRequest, GenerateVideoResponse, ModelsConfig, RulesConfig
+from fraime.model import (
+    GenerateImageRequest,
+    GenerateImageResponse,
+    GenerateVideoRequest,
+    GenerateVideoResponse,
+    GenerateVoiceRequest,
+    GenerateVoiceResponse,
+    ModelsConfig,
+    RulesConfig,
+)
 from fraime.repository import GenerationRepository
 
 
@@ -12,6 +21,19 @@ class GenerationService:
 
         raw = self._repository.post_generate(payload)
         return GenerateVideoResponse.model_validate(raw)
+
+    def generate_image(self, request: GenerateImageRequest) -> GenerateImageResponse:
+        payload = request.model_dump(mode="json", exclude_none=True, exclude={"fields"})
+        payload["fields"] = request.fields.model_dump(mode="json", exclude_none=True)
+
+        raw = self._repository.post_generate(payload)
+        return GenerateImageResponse.model_validate(raw)
+
+    def generate_voice(self, request: GenerateVoiceRequest) -> GenerateVoiceResponse:
+        payload = request.model_dump(mode="json", exclude_none=True)
+
+        raw = self._repository.post_generate(payload)
+        return GenerateVoiceResponse.model_validate(raw)
 
     def get_models_config(self) -> ModelsConfig:
         raw = self._repository.get_models_config()

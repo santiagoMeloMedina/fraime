@@ -9,14 +9,15 @@
 #
 # For CPU-only use (dev/testing — real generation on CPU is impractically slow
 # for these models, see api/README.md), swap the FROM line for `python:3.11-slim`.
-FROM pytorch/pytorch:2.4.0-cuda12.1-cudnn9-runtime
+FROM pytorch/pytorch:2.13.0-cuda12.6-cudnn9-runtime
 
 WORKDIR /app
 
 # Copied separately so this layer only rebuilds when dependencies actually change.
 COPY requirements.txt api/requirements.txt
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r api/requirements.txt
+RUN pip install --no-cache-dir --break-system-packages --upgrade pip \
+    && pip install --no-cache-dir --break-system-packages -r api/requirements.txt \
+    && pip install --no-cache-dir --break-system-packages --no-deps chatterbox-tts
 
 COPY . api/
 
@@ -25,7 +26,7 @@ COPY . api/
 ENV GENERATION_MODEL_CACHE_DIR=/data/models \
     GENERATION_OUTPUT_DIR=/data/generated
 RUN mkdir -p /data/models /data/generated \
-    && useradd --create-home --uid 1000 fraime \
+    && useradd --create-home fraime \
     && chown -R fraime:fraime /app /data
 VOLUME ["/data/models", "/data/generated"]
 USER fraime

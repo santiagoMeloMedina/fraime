@@ -3,44 +3,78 @@ from pathlib import Path
 from uuid import uuid4
 
 from diffusers.utils import export_to_video
-from pydantic import BaseModel
 
 from api.config import environment
-from api.detector import select_best_model
+from api.detector import NoModelFitsError, select_best_model
+from api.detector.catalog import load_catalog
 from api.generation.create import GenerationHandler
-from api.generation.model import GenerationParams, Reference
-from api.storage.s3 import generate_presigned_url, probe_write_access, upload_file
+from api.generation.image.create import ImageGeneratorHandler
+from api.generation.media_type import MediaType
+from api.generation.voice.create import VoiceGeneratorHandler
+from api.generation.voice.model import VoiceVariant
+from api.model import (
+    GenerateImageRequest,
+    GenerateImageResult,
+    GenerateRequest,
+    GenerateVideoRequest,
+    GenerateVideoResult,
+    GenerateVoiceRequest,
+    GenerateVoiceResult,
+)
+from api.utils.aws.s3 import generate_presigned_url, probe_write_access, upload_file
 
 
-class GenerateVideoRequest(BaseModel):
-    model: str | None = None
-    video_type: str
-    fields: dict
-    params: GenerationParams
-    references: list[Reference] | None = None
-    vram_safety_margin: bool = True
-    low_memory_decode: bool = True
-    cpu_offload: bool = True
+def generate_media(
+    request: GenerateRequest,
+) -> GenerateVideoResult | GenerateImageResult | GenerateVoiceResult:
+    if request.media_type == MediaType.IMAGE:
+        return generate_image(request)
+    if request.media_type == MediaType.VOICE:
+        return generate_voice(request)
+    return generate_video(request)
 
 
 @dataclass
-class GenerateVideoResult:
-    video_path: str | None
-    model: str
-    s3_bucket: str | None = None
-    s3_key: str | None = None
-    s3_url: str | None = None
+class _StoredOutput:
+    local_path: str | None
+    s3_bucket: str | None
+    s3_key: str | None
+    s3_url: str | None
 
 
-def generate_video(request: GenerateVideoRequest) -> GenerateVideoResult:
-    video_name = f"{uuid4()}.mp4"
+def _reserve_output_path(extension: str) -> tuple[Path, str | None, str | None]:
+    """Picks a local output path and, if S3 output is configured, probes write
+    access to the destination key upfront so a permissions problem fails fast
+    instead of after several minutes of generation."""
+    name = f"{uuid4()}{extension}"
+    output_dir = Path(environment.generation.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / name
 
     s3_bucket = environment.cloud.s3_output_bucket
     s3_key = None
     if s3_bucket:
         prefix = environment.cloud.s3_output_prefix
-        s3_key = f"{prefix.strip('/')}/.{video_name}" if prefix else f".{video_name}"
+        s3_key = f"{prefix.strip('/')}/.{name}" if prefix else f".{name}"
         probe_write_access(s3_bucket, s3_key)
+
+    return output_path, s3_bucket, s3_key
+
+
+def _store_output(local_path: str, s3_bucket: str | None, s3_key: str | None) -> _StoredOutput:
+    """Uploads the generated file to S3 and removes the local copy when S3 output is
+    configured; otherwise keeps it on the local filesystem."""
+    if s3_bucket:
+        upload_file(s3_bucket, s3_key, local_path)
+        s3_url = generate_presigned_url(s3_bucket, s3_key)
+        Path(local_path).unlink(missing_ok=True)
+        return _StoredOutput(local_path=None, s3_bucket=s3_bucket, s3_key=s3_key, s3_url=s3_url)
+
+    return _StoredOutput(local_path=local_path, s3_bucket=None, s3_key=None, s3_url=None)
+
+
+def generate_video(request: GenerateVideoRequest) -> GenerateVideoResult:
+    output_path, s3_bucket, s3_key = _reserve_output_path(".mp4")
 
     model = request.model
     if model is None:
@@ -60,18 +94,82 @@ def generate_video(request: GenerateVideoRequest) -> GenerateVideoResult:
         request.params,
         request.references,
     )
-
-    output_dir = Path(environment.generation.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / video_name
     local_path = export_to_video(frames, str(output_path), fps=request.params.fps)
 
-    if s3_bucket:
-        upload_file(s3_bucket, s3_key, local_path)
-        s3_url = generate_presigned_url(s3_bucket, s3_key)
-        Path(local_path).unlink(missing_ok=True)
-        return GenerateVideoResult(
-            video_path=None, model=model, s3_bucket=s3_bucket, s3_key=s3_key, s3_url=s3_url
-        )
+    stored = _store_output(local_path, s3_bucket, s3_key)
+    return GenerateVideoResult(
+        video_path=stored.local_path,
+        model=model,
+        s3_bucket=stored.s3_bucket,
+        s3_key=stored.s3_key,
+        s3_url=stored.s3_url,
+    )
 
-    return GenerateVideoResult(video_path=local_path, model=model)
+
+def generate_image(request: GenerateImageRequest) -> GenerateImageResult:
+    output_path, s3_bucket, s3_key = _reserve_output_path(".png")
+
+    model = request.model
+    if model is None:
+        capabilities = ["image-to-image"] if request.references else None
+        model = select_best_model(
+            media_type=MediaType.IMAGE,
+            capabilities=capabilities,
+            safety_margin=request.vram_safety_margin,
+        ).model_id
+
+    handler = ImageGeneratorHandler(model, cpu_offload=request.cpu_offload)
+    image = handler.generate(request.fields, request.params, request.references)
+    image.save(output_path)
+
+    stored = _store_output(str(output_path), s3_bucket, s3_key)
+    return GenerateImageResult(
+        image_path=stored.local_path,
+        model=model,
+        s3_bucket=stored.s3_bucket,
+        s3_key=stored.s3_key,
+        s3_url=stored.s3_url,
+    )
+
+
+def _resolve_pinned_voice_variant(variant: VoiceVariant) -> str:
+    """Chatterbox variants are fixed classes, not arbitrary HF repo pins, so an
+    explicit `variant` resolves through the catalog to its documented model id
+    rather than being passed to a loader directly."""
+    catalog = load_catalog()
+    for candidate in catalog["models"].values():
+        if candidate.get("media_type") == MediaType.VOICE.value and candidate.get("variant") == variant.value:
+            return candidate["id"]
+    raise NoModelFitsError(f"No voice catalog model has variant={variant.value!r}")
+
+
+def generate_voice(request: GenerateVoiceRequest) -> GenerateVoiceResult:
+    import torchaudio
+
+    output_path, s3_bucket, s3_key = _reserve_output_path(".wav")
+
+    if request.variant is not None:
+        variant = request.variant
+        model = _resolve_pinned_voice_variant(variant)
+    else:
+        capabilities = ["multilingual"] if request.language and request.language.lower() != "en" else None
+        match = select_best_model(
+            media_type=MediaType.VOICE,
+            capabilities=capabilities,
+            safety_margin=request.vram_safety_margin,
+        )
+        variant = VoiceVariant(match.variant)
+        model = match.model_id
+
+    handler = VoiceGeneratorHandler(variant=variant, model_id=model)
+    wav, sample_rate = handler.generate(request.text, request.params, request.language, request.voice)
+    torchaudio.save(str(output_path), wav, sample_rate)
+
+    stored = _store_output(str(output_path), s3_bucket, s3_key)
+    return GenerateVoiceResult(
+        voice_path=stored.local_path,
+        model=model,
+        s3_bucket=stored.s3_bucket,
+        s3_key=stored.s3_key,
+        s3_url=stored.s3_url,
+    )
