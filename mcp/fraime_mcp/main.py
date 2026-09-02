@@ -111,6 +111,7 @@ def generate_image(input: GenerateImageInput) -> GenerateImageOutput:
         seed=input.seed,
         num_inference_steps=input.num_inference_steps,
         guidance_scale=input.guidance_scale,
+        strength=input.strength,
     )
     references = [Reference(url=u) for u in input.reference_urls] if input.reference_urls else None
 

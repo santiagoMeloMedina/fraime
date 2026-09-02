@@ -84,6 +84,8 @@ class ImageGeneratorHandler:
         fetched = self._fetch_references(references or [])
         if fetched.images:
             pipeline_kwargs["image"] = fetched.images[0]
+            if params.strength is not None:
+                pipeline_kwargs["strength"] = params.strength
             pipeline = self._get_img2img_pipeline()
         else:
             pipeline = self.pipeline

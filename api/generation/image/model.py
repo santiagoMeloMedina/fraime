@@ -15,3 +15,9 @@ class ImageGenerationParams(BaseModel):
         ge=0,
         description="Classifier-free guidance scale; defaults to the pipeline's own default when unset.",
     )
+    strength: float | None = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description="Image-to-image only: how much the reference image is allowed to change, from 0 (unchanged) to 1 (ignored). Defaults to the pipeline's own default (0.3, a light restyle) when unset. Has no effect without a reference image.",
+    )

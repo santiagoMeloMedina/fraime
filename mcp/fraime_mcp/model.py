@@ -181,6 +181,16 @@ class GenerateImageInput(BaseModel):
     guidance_scale: float | None = Field(
         default=None, ge=0, description="Classifier-free guidance scale. Omit to use the model's own default."
     )
+    strength: float | None = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description=(
+            "Image-to-image only: how much the reference image is allowed to change, from 0 "
+            "(unchanged) to 1 (ignored). Omit to use the model's own default (0.3, a light "
+            "restyle). Has no effect without reference_urls."
+        ),
+    )
 
     # Model selection / real image conditioning / performance knobs.
     model: str | None = Field(
