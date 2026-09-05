@@ -13,6 +13,7 @@ from api.detector import detect_hardware
 from api.generation.model import Reference
 from api.generation.voice.model import VoiceGenerationParams, VoiceVariant
 from api.utils.progress import make_progress_reporter
+from api.utils.quiet import suppress_stdout
 
 MAX_CHUNK_CHARS = 300
 
@@ -60,7 +61,8 @@ class VoiceGeneratorHandler:
 
         hardware = detect_hardware()
         self.device = hardware.accelerator.value
-        self.model = variant_classes[variant].from_pretrained(device=self.device)
+        with suppress_stdout():
+            self.model = variant_classes[variant].from_pretrained(device=self.device)
 
     def generate(
         self,

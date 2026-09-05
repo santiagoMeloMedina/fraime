@@ -1,3 +1,7 @@
+from api.utils.quiet import suppress_library_noise
+
+suppress_library_noise()
+
 import gc
 from dataclasses import dataclass
 from pathlib import Path
@@ -24,6 +28,7 @@ from api.model import (
     GenerateVoiceResult,
 )
 from api.utils.aws.s3 import generate_presigned_url, probe_write_access, upload_file
+from api.utils.log import log_event
 
 
 def generate_media(
@@ -68,6 +73,7 @@ def _get_image_handler(model: str, cpu_offload: bool) -> ImageGeneratorHandler:
     if key != _cached_image_key:
         _cached_image_handler = None
         _release_accelerator_memory()
+        log_event(f"started download of model {model}")
         _cached_image_handler = ImageGeneratorHandler(model, cpu_offload=cpu_offload)
         _cached_image_key = key
     return _cached_image_handler
@@ -79,6 +85,7 @@ def _get_video_handler(model: str, low_memory_decode: bool, cpu_offload: bool) -
     if key != _cached_video_key:
         _cached_video_handler = None
         _release_accelerator_memory()
+        log_event(f"started download of model {model}")
         _cached_video_handler = GenerationHandler(
             model, low_memory_decode=low_memory_decode, cpu_offload=cpu_offload
         )
@@ -92,6 +99,7 @@ def _get_voice_handler(variant: VoiceVariant, model_id: str) -> VoiceGeneratorHa
     if key != _cached_voice_key:
         _cached_voice_handler = None
         _release_accelerator_memory()
+        log_event(f"started download of model {model_id}")
         _cached_voice_handler = VoiceGeneratorHandler(variant=variant, model_id=model_id)
         _cached_voice_key = key
     return _cached_voice_handler
@@ -148,6 +156,7 @@ def generate_video(request: GenerateVideoRequest) -> GenerateVideoResult:
             safety_margin=request.vram_safety_margin,
         ).model_id
 
+    log_event(f"started video generation with model={model} params={request.params.model_dump()}")
     handler = _get_video_handler(
         model, low_memory_decode=request.low_memory_decode, cpu_offload=request.cpu_offload
     )
@@ -181,6 +190,7 @@ def generate_image(request: GenerateImageRequest) -> GenerateImageResult:
             safety_margin=request.vram_safety_margin,
         ).model_id
 
+    log_event(f"started image generation with model={model} params={request.params.model_dump()}")
     handler = _get_image_handler(model, cpu_offload=request.cpu_offload)
     image = handler.generate(request.fields, request.params, request.references)
     image.save(output_path)
@@ -224,6 +234,9 @@ def generate_voice(request: GenerateVoiceRequest) -> GenerateVoiceResult:
         variant = VoiceVariant(match.variant)
         model = match.model_id
 
+    log_event(
+        f"started voice generation with model={model} variant={variant.value} params={request.params.model_dump()}"
+    )
     handler = _get_voice_handler(variant=variant, model_id=model)
     wav, sample_rate = handler.generate(request.text, request.params, request.language, request.voice)
     wav_array = wav.numpy()
