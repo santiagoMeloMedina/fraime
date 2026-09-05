@@ -1,7 +1,9 @@
+import gc
 from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
 
+import torch
 from diffusers.utils import export_to_video
 
 from api.config import environment
@@ -32,6 +34,67 @@ def generate_media(
     if request.media_type == MediaType.VOICE:
         return generate_voice(request)
     return generate_video(request)
+
+
+def _release_accelerator_memory() -> None:
+    """Drops any cached-but-now-unreferenced pipeline before the next one loads.
+    Without this, a model switch can transiently hold two pipelines' weights at
+    once — the previous one hasn't actually freed VRAM yet when the next
+    from_pretrained call starts allocating."""
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    elif torch.backends.mps.is_available():
+        torch.mps.empty_cache()
+
+
+# Each holds at most one loaded pipeline — matches this process being pinned to a
+# single GPU-resident model at a time (see api/Dockerfile). Keyed on whatever the
+# handler's constructor args are, since those (not just the model id) determine
+# what's actually resident.
+_cached_image_key: tuple[str, bool] | None = None
+_cached_image_handler: ImageGeneratorHandler | None = None
+
+_cached_video_key: tuple[str, bool, bool] | None = None
+_cached_video_handler: GenerationHandler | None = None
+
+_cached_voice_key: tuple[str, VoiceVariant] | None = None
+_cached_voice_handler: VoiceGeneratorHandler | None = None
+
+
+def _get_image_handler(model: str, cpu_offload: bool) -> ImageGeneratorHandler:
+    global _cached_image_key, _cached_image_handler
+    key = (model, cpu_offload)
+    if key != _cached_image_key:
+        _cached_image_handler = None
+        _release_accelerator_memory()
+        _cached_image_handler = ImageGeneratorHandler(model, cpu_offload=cpu_offload)
+        _cached_image_key = key
+    return _cached_image_handler
+
+
+def _get_video_handler(model: str, low_memory_decode: bool, cpu_offload: bool) -> GenerationHandler:
+    global _cached_video_key, _cached_video_handler
+    key = (model, low_memory_decode, cpu_offload)
+    if key != _cached_video_key:
+        _cached_video_handler = None
+        _release_accelerator_memory()
+        _cached_video_handler = GenerationHandler(
+            model, low_memory_decode=low_memory_decode, cpu_offload=cpu_offload
+        )
+        _cached_video_key = key
+    return _cached_video_handler
+
+
+def _get_voice_handler(variant: VoiceVariant, model_id: str) -> VoiceGeneratorHandler:
+    global _cached_voice_key, _cached_voice_handler
+    key = (model_id, variant)
+    if key != _cached_voice_key:
+        _cached_voice_handler = None
+        _release_accelerator_memory()
+        _cached_voice_handler = VoiceGeneratorHandler(variant=variant, model_id=model_id)
+        _cached_voice_key = key
+    return _cached_voice_handler
 
 
 @dataclass
@@ -85,7 +148,7 @@ def generate_video(request: GenerateVideoRequest) -> GenerateVideoResult:
             safety_margin=request.vram_safety_margin,
         ).model_id
 
-    handler = GenerationHandler(
+    handler = _get_video_handler(
         model, low_memory_decode=request.low_memory_decode, cpu_offload=request.cpu_offload
     )
     frames = handler.generate(
@@ -118,7 +181,7 @@ def generate_image(request: GenerateImageRequest) -> GenerateImageResult:
             safety_margin=request.vram_safety_margin,
         ).model_id
 
-    handler = ImageGeneratorHandler(model, cpu_offload=request.cpu_offload)
+    handler = _get_image_handler(model, cpu_offload=request.cpu_offload)
     image = handler.generate(request.fields, request.params, request.references)
     image.save(output_path)
 
@@ -161,7 +224,7 @@ def generate_voice(request: GenerateVoiceRequest) -> GenerateVoiceResult:
         variant = VoiceVariant(match.variant)
         model = match.model_id
 
-    handler = VoiceGeneratorHandler(variant=variant, model_id=model)
+    handler = _get_voice_handler(variant=variant, model_id=model)
     wav, sample_rate = handler.generate(request.text, request.params, request.language, request.voice)
     torchaudio.save(str(output_path), wav, sample_rate)
 
