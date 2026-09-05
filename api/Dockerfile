@@ -13,6 +13,10 @@ FROM pytorch/pytorch:2.13.0-cuda12.6-cudnn9-runtime
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends btop \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copied separately so this layer only rebuilds when dependencies actually change.
 COPY requirements.txt api/requirements.txt
 RUN pip install --no-cache-dir --break-system-packages --upgrade pip \
