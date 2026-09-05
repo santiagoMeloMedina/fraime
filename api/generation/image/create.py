@@ -13,6 +13,7 @@ from api.detector import Accelerator, detect_hardware
 from api.generation.image.model import ImageGenerationParams
 from api.generation.media_type import MediaType
 from api.generation.model import Reference
+from api.generation.prompt import clip_chunking
 from api.generation.prompt.handler import PromptHandler
 from api.utils.progress import make_progress_reporter
 
@@ -63,6 +64,7 @@ class ImageGeneratorHandler:
         references: list[Reference] | None = None,
     ):
         compiled_prompt = PromptHandler.compile(MediaType.IMAGE, fields)
+        negative_prompt = fields.get("negative_prompt")
         generator = (
             torch.Generator(device=self.device).manual_seed(params.seed)
             if params.seed is not None
@@ -70,12 +72,17 @@ class ImageGeneratorHandler:
         )
 
         pipeline_kwargs = {
-            "prompt": compiled_prompt,
-            "negative_prompt": fields.get("negative_prompt"),
             "width": params.width,
             "height": params.height,
             "generator": generator,
         }
+        if clip_chunking.supports_chunking(self.pipeline) and clip_chunking.needs_chunking(
+            self.pipeline.tokenizer, compiled_prompt
+        ):
+            pipeline_kwargs.update(clip_chunking.build_long_prompt_embeds(self.pipeline, compiled_prompt, negative_prompt))
+        else:
+            pipeline_kwargs["prompt"] = compiled_prompt
+            pipeline_kwargs["negative_prompt"] = negative_prompt
         if params.num_inference_steps is not None:
             pipeline_kwargs["num_inference_steps"] = params.num_inference_steps
         if params.guidance_scale is not None:
