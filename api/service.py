@@ -207,7 +207,7 @@ def _resolve_pinned_voice_variant(variant: VoiceVariant) -> str:
 
 
 def generate_voice(request: GenerateVoiceRequest) -> GenerateVoiceResult:
-    import torchaudio
+    import soundfile
 
     output_path, s3_bucket, s3_key = _reserve_output_path(".wav")
 
@@ -226,7 +226,10 @@ def generate_voice(request: GenerateVoiceRequest) -> GenerateVoiceResult:
 
     handler = _get_voice_handler(variant=variant, model_id=model)
     wav, sample_rate = handler.generate(request.text, request.params, request.language, request.voice)
-    torchaudio.save(str(output_path), wav, sample_rate)
+    wav_array = wav.numpy()
+    if wav_array.ndim == 2:
+        wav_array = wav_array.T
+    soundfile.write(str(output_path), wav_array, sample_rate)
 
     stored = _store_output(str(output_path), s3_bucket, s3_key)
     return GenerateVoiceResult(

@@ -16,10 +16,10 @@ imageio
 imageio-ffmpeg
 boto3
 torchaudio
-torchcodec
 conformer
 gradio
 librosa==0.11.0
+soundfile
 omegaconf
 pykakasi==2.3.0
 pyloudnorm
