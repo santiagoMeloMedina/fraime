@@ -4,7 +4,7 @@ import logging
 import warnings
 
 warnings.filterwarnings("ignore")
-logging.disable(logging.CRITICAL)
+logging.getLogger("chatterbox").setLevel(logging.CRITICAL)
 
 
 @contextlib.contextmanager

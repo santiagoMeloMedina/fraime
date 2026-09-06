@@ -73,9 +73,10 @@ def _get_image_handler(model: str, cpu_offload: bool) -> ImageGeneratorHandler:
     if key != _cached_image_key:
         _cached_image_handler = None
         _release_accelerator_memory()
-        log_event(f"started download of model {model}")
+        log_event(f"loading model {model}")
         _cached_image_handler = ImageGeneratorHandler(model, cpu_offload=cpu_offload)
         _cached_image_key = key
+        log_event(f"finished loading model {model}")
     return _cached_image_handler
 
 
@@ -85,11 +86,12 @@ def _get_video_handler(model: str, low_memory_decode: bool, cpu_offload: bool) -
     if key != _cached_video_key:
         _cached_video_handler = None
         _release_accelerator_memory()
-        log_event(f"started download of model {model}")
+        log_event(f"loading model {model}")
         _cached_video_handler = GenerationHandler(
             model, low_memory_decode=low_memory_decode, cpu_offload=cpu_offload
         )
         _cached_video_key = key
+        log_event(f"finished loading model {model}")
     return _cached_video_handler
 
 
@@ -99,9 +101,10 @@ def _get_voice_handler(variant: VoiceVariant, model_id: str) -> VoiceGeneratorHa
     if key != _cached_voice_key:
         _cached_voice_handler = None
         _release_accelerator_memory()
-        log_event(f"started download of model {model_id}")
+        log_event(f"loading model {model_id}")
         _cached_voice_handler = VoiceGeneratorHandler(variant=variant, model_id=model_id)
         _cached_voice_key = key
+        log_event(f"finished loading model {model_id}")
     return _cached_voice_handler
 
 
@@ -169,6 +172,7 @@ def generate_video(request: GenerateVideoRequest) -> GenerateVideoResult:
     local_path = export_to_video(frames, str(output_path), fps=request.params.fps)
 
     stored = _store_output(local_path, s3_bucket, s3_key)
+    log_event(f"finished video generation with model={model}: {stored.local_path or stored.s3_url}")
     return GenerateVideoResult(
         video_path=stored.local_path,
         model=model,
@@ -196,6 +200,7 @@ def generate_image(request: GenerateImageRequest) -> GenerateImageResult:
     image.save(output_path)
 
     stored = _store_output(str(output_path), s3_bucket, s3_key)
+    log_event(f"finished image generation with model={model}: {stored.local_path or stored.s3_url}")
     return GenerateImageResult(
         image_path=stored.local_path,
         model=model,
@@ -245,6 +250,7 @@ def generate_voice(request: GenerateVoiceRequest) -> GenerateVoiceResult:
     soundfile.write(str(output_path), wav_array, sample_rate)
 
     stored = _store_output(str(output_path), s3_bucket, s3_key)
+    log_event(f"finished voice generation with model={model}: {stored.local_path or stored.s3_url}")
     return GenerateVoiceResult(
         voice_path=stored.local_path,
         model=model,
