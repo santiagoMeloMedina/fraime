@@ -47,6 +47,7 @@ class FraimeClient:
         vram_safety_margin: bool = True,
         low_memory_decode: bool = True,
         cpu_offload: bool = True,
+        timeout: float | None = None,
     ) -> GenerateVideoResponse:
         request = GenerateVideoRequest(
             video_type=video_type,
@@ -58,7 +59,7 @@ class FraimeClient:
             low_memory_decode=low_memory_decode,
             cpu_offload=cpu_offload,
         )
-        return self._service.generate_video(request)
+        return self._service.generate_video(request, timeout=timeout)
 
     def generate_image(
         self,
@@ -68,6 +69,7 @@ class FraimeClient:
         references: list[Reference] | None = None,
         vram_safety_margin: bool = True,
         cpu_offload: bool = True,
+        timeout: float | None = None,
     ) -> GenerateImageResponse:
         request = GenerateImageRequest(
             fields=fields,
@@ -77,7 +79,7 @@ class FraimeClient:
             vram_safety_margin=vram_safety_margin,
             cpu_offload=cpu_offload,
         )
-        return self._service.generate_image(request)
+        return self._service.generate_image(request, timeout=timeout)
 
     def generate_voice(
         self,
@@ -87,6 +89,7 @@ class FraimeClient:
         language: str | None = None,
         voice: Reference | None = None,
         vram_safety_margin: bool = True,
+        timeout: float | None = None,
     ) -> GenerateVoiceResponse:
         request = GenerateVoiceRequest(
             text=text,
@@ -96,7 +99,7 @@ class FraimeClient:
             voice=voice,
             vram_safety_margin=vram_safety_margin,
         )
-        return self._service.generate_voice(request)
+        return self._service.generate_voice(request, timeout=timeout)
 
     def get_models_config(self) -> ModelsConfig:
         return self._service.get_models_config()

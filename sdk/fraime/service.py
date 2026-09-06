@@ -15,24 +15,24 @@ class GenerationService:
     def __init__(self, repository: GenerationRepository):
         self._repository = repository
 
-    def generate_video(self, request: GenerateVideoRequest) -> GenerateVideoResponse:
+    def generate_video(self, request: GenerateVideoRequest, timeout: float | None = None) -> GenerateVideoResponse:
         payload = request.model_dump(mode="json", exclude_none=True, exclude={"fields"})
         payload["fields"] = request.fields.model_dump(mode="json", exclude_none=True)
 
-        raw = self._repository.post_generate(payload)
+        raw = self._repository.post_generate(payload, timeout=timeout)
         return GenerateVideoResponse.model_validate(raw)
 
-    def generate_image(self, request: GenerateImageRequest) -> GenerateImageResponse:
+    def generate_image(self, request: GenerateImageRequest, timeout: float | None = None) -> GenerateImageResponse:
         payload = request.model_dump(mode="json", exclude_none=True, exclude={"fields"})
         payload["fields"] = request.fields.model_dump(mode="json", exclude_none=True)
 
-        raw = self._repository.post_generate(payload)
+        raw = self._repository.post_generate(payload, timeout=timeout)
         return GenerateImageResponse.model_validate(raw)
 
-    def generate_voice(self, request: GenerateVoiceRequest) -> GenerateVoiceResponse:
+    def generate_voice(self, request: GenerateVoiceRequest, timeout: float | None = None) -> GenerateVoiceResponse:
         payload = request.model_dump(mode="json", exclude_none=True)
 
-        raw = self._repository.post_generate(payload)
+        raw = self._repository.post_generate(payload, timeout=timeout)
         return GenerateVoiceResponse.model_validate(raw)
 
     def get_models_config(self) -> ModelsConfig:

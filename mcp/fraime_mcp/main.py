@@ -1,3 +1,5 @@
+import os
+
 from fraime import (
     PROMPT_FIELDS_BY_VIDEO_TYPE,
     CinematicPromptFields,
@@ -38,8 +40,9 @@ server = MCPServer(
 # FraimeClient itself already falls back to FRAIME_BASE_URL/FRAIME_API_KEY from
 # the environment when these aren't passed explicitly. It's also the entire
 # data-access layer this server needs — no separate repository wrapper adds
-# anything beyond what calling it directly here does.
-_client = FraimeClient()
+# anything beyond what calling it directly here does. FraimeClient has no
+# FRAIME_TIMEOUT fallback of its own, so that one's read here instead.
+_client = FraimeClient(timeout=float(os.environ.get("FRAIME_TIMEOUT", "600")))
 
 
 @server.tool()
@@ -70,6 +73,7 @@ def generate_video(input: GenerateVideoInput) -> GenerateVideoOutput:
             vram_safety_margin=input.vram_safety_margin,
             low_memory_decode=input.low_memory_decode,
             cpu_offload=input.cpu_offload,
+            timeout=input.timeout,
         )
     except FraimeError as e:
         # Anticipated: auth/connection/API failures talking to the Fraime API.
@@ -123,6 +127,7 @@ def generate_image(input: GenerateImageInput) -> GenerateImageOutput:
             references=references,
             vram_safety_margin=input.vram_safety_margin,
             cpu_offload=input.cpu_offload,
+            timeout=input.timeout,
         )
     except FraimeError as e:
         raise ToolError(str(e)) from e
@@ -164,6 +169,7 @@ def generate_voice(input: GenerateVoiceInput) -> GenerateVoiceOutput:
             language=input.language,
             voice=voice,
             vram_safety_margin=input.vram_safety_margin,
+            timeout=input.timeout,
         )
     except FraimeError as e:
         raise ToolError(str(e)) from e

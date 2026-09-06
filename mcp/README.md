@@ -151,6 +151,7 @@ call `generate_voice` directly, it just takes text.
 |---|---|---|
 | `FRAIME_BASE_URL` | `http://127.0.0.1:8000` | Base URL of the Fraime API to call |
 | `FRAIME_API_KEY` | none | Sent as `Authorization: Bearer <key>` if set |
+| `FRAIME_TIMEOUT` | `600` (seconds) | How long to wait for a response before giving up. `FraimeClient` has no env fallback of its own for this, unlike the other two — this server reads it directly and passes it in |
 
-Both are read by the underlying `FraimeClient` — see
-[`sdk/README.md`](../sdk/README.md#configuration-reference) for details.
+`FRAIME_BASE_URL`/`FRAIME_API_KEY` are read by the underlying `FraimeClient` —
+see [`sdk/README.md`](../sdk/README.md#configuration-reference) for details.

@@ -119,6 +119,10 @@ class GenerateVideoInput(BaseModel):
         default=True,
         description="Move pipeline components between CPU and the accelerator instead of holding all of them resident at once — trades speed for headroom. Recommended on unless the host has VRAM to spare.",
     )
+    timeout: float | None = Field(
+        default=None,
+        description="Seconds to wait for this specific request before giving up. Omit to use the server's configured default (FRAIME_TIMEOUT, 600s if unset).",
+    )
 
 
 class GenerateVideoOutput(BaseModel):
@@ -211,6 +215,10 @@ class GenerateImageInput(BaseModel):
         default=True,
         description="Move pipeline components between CPU and the accelerator instead of holding all of them resident at once — trades speed for headroom. Recommended on unless the host has VRAM to spare.",
     )
+    timeout: float | None = Field(
+        default=None,
+        description="Seconds to wait for this specific request before giving up. Omit to use the server's configured default (FRAIME_TIMEOUT, 600s if unset).",
+    )
 
 
 class GenerateImageOutput(BaseModel):
@@ -270,6 +278,10 @@ class GenerateVoiceInput(BaseModel):
     vram_safety_margin: bool = Field(
         default=True,
         description="Match auto-selection against 85% of detected VRAM instead of 100%, for headroom against real-world usage spikes. Recommended on.",
+    )
+    timeout: float | None = Field(
+        default=None,
+        description="Seconds to wait for this specific request before giving up. Omit to use the server's configured default (FRAIME_TIMEOUT, 600s if unset).",
     )
 
 
